@@ -23,7 +23,7 @@ void ServiceDirectory::deregisterByName(const Name& name)
     {
         mServices.erase(it);
     } else {
-        throw service_directory::NotFound();
+        throw NotFound();
     }
 }
 
@@ -56,7 +56,7 @@ void ServiceDirectory::modify(const ServiceDirectoryEntry& entry)
 
     if(list.empty())
     {
-        throw service_directory::NotFound();
+        throw NotFound();
     }
 
     mServices[entry.getName()] = entry;

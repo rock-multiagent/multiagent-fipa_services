@@ -15,12 +15,10 @@
 
 namespace fipa {
 namespace service {
-namespace service_directory {
 
 FIPA_SERVICE_EXCEPTION(DuplicateEntry, "Entry already exists")
 FIPA_SERVICE_EXCEPTION(NotFound, "Entry could not be found")
 
-} // end namespace service_directory
 } // end namespace service
 } // end namespace fipa
 

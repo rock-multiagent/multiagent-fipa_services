@@ -1,9 +1,15 @@
 find_package(Boost COMPONENTS regex unit_test_framework REQUIRED)
 
 rock_library(fipa_services
-    SOURCES ServiceDirectory.cpp
+    SOURCES 
+        MessageTransport.cpp
+        MessageTransportService.cpp
+        ServiceDirectory.cpp
         ServiceDirectoryEntry.cpp
-    HEADERS ServiceDirectoryEntry.hpp
+    HEADERS 
+        MessageTransport.hpp
+        MessageTransportService.hpp
+        ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp
     LIBS ${Boost_REGEX_LIBRARY}
 )
