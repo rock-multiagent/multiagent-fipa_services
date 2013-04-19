@@ -1,0 +1,17 @@
+<package>
+  <description brief="FIPA based services">
+  Implementation of FIPA services such as message transport service and service directory
+  </description>
+  <author>Thomas Roehr/thomas.roehr@dfki.de</author>
+  <license></license>
+  <url>http://</url>
+  <logo>http://</logo>
+  <!--
+   To add any dependencies use the depend tag
+  <depend package="dummy-dependency-0" />
+	...
+  <depend package="dummy-dependency-n-1" />
+  <depend package="dummy-dependency-n" />
+  -->
+  <depend package="multiagent/fipa_acl" />
+</package>
