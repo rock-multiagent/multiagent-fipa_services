@@ -12,6 +12,7 @@ rock_library(fipa_services
         ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp
     LIBS ${Boost_REGEX_LIBRARY}
+    DEPS_PKGCONFIG base-lib
 )
 
 #rock_executable(fipa_services_bin Main.cpp

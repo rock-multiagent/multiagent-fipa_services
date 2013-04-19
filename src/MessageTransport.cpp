@@ -8,6 +8,7 @@ uint32_t Ticket::currentId = 0;
 
 Ticket::Ticket()
     : id(++currentId)
+    , time(base::Time::now())
     , status(UNKOWN) 
 {}
 
