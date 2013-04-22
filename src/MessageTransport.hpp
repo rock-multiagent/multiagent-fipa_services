@@ -1,50 +1,104 @@
-#ifndef FIPA_SERVICE_TRANSPORT_HPP
-#define FIPA_SERVICE_TRANSPORT_HPP
+#ifndef FIPA_SERVICE_MESSAGE_TRANSPORT_SERVICE_HPP
+#define FIPA_SERVICE_MESSAGE_TRANSPORT_SERVICE_HPP
 
-#include <stdint.h>
-#include <string>
-#include <vector>
-#include <base/time.h>
+#include <map>
+#include <fipa_acl/fipa_acl.h>
+#include <fipa_services/MessageTransport.hpp>
+#include <boost/function.hpp>
+#include <stdexcept>
 
 namespace fipa {
+namespace agent_management {
+    const std::string ONTOLOGY = "fipa-agent-management";
+    const std::string INTERNAL_ERROR = "internal-error";
+}
+
 namespace service {
 namespace message_transport {
 
 typedef std::string Type;
-
-// Status of the message delivery process
-enum Status { UNKOWN, DELIVERY_IN_PROGRESS, DELIVERY_FAILED, DELIVERY_SUCCEEDED };
+typedef boost::function1<bool, const fipa::acl::Letter&> TransportHandler;
+typedef std::map<message_transport::Type, TransportHandler> TransportHandlerMap;
+typedef std::vector<message_transport::Type> TransportPriorityList;
 
 /**
- * \class Ticket
- * \brief A ticket should be created for each message so that the status can be tracked
+ * \class MessageTransport
+ * \brief Service responsible for handling FIPA message and managing the forwarding
+ *  and relaying
  */
-class Ticket
+class MessageTransport
 {
-    static uint32_t currentId;
+private:
+    fipa::acl::AgentID mAgentId;
+
+    TransportHandlerMap mTransportHandlerMap;
+    TransportPriorityList mTransportPriorityList;
+
+    /**
+     * Stamp message for further delivery,
+     * i.e. mark as handled by this message transport
+     */
+    void stamp(fipa::acl::Letter& msg) const;
+
+    /**
+     * Test whether a message has already been stamped by
+     * this message transport
+     */
+    bool hasStamp(const fipa::acl::Letter& msg) const;
+
+    /** 
+     * Create an internal error message
+     */
+    fipa::acl::ACLMessage createInternalErrorMessage(const fipa::acl::ACLMessage& msg, const std::string& description) const;
+
+    /**
+     * Forward a letter to the next relay or final recipient
+     */
+    bool forward(const fipa::acl::Letter& msg) const;
+
 public:
-    uint32_t id;
-    base::Time time;
-    Status status;
 
-    Ticket();
+    /**
+     * \class MessageTransport
+     * \param id Agent id for this message transport
+     */
+    MessageTransport(const fipa::acl::AgentID& id);
+
+    /**
+     * Handle message, i.e. 
+     * check forward -- create and internal ticket (based on the conversation id and 
+     * interprete error messages correctly)
+     */
+    void handle(fipa::acl::Letter& msg) const;
+
+    /**
+     * Handle error, i.e. 
+     * generate an error message from the original message
+     */
+    void handleError(const fipa::acl::Letter& msg) const;
+
+    /**
+     * Register a TransportHandler (the order of registration determines the priority)
+     * \throw Duplicate
+     */
+    void registerTransport(const Type& type, TransportHandler handler);
+
+    /**
+     * Deregister a TransportHandler
+     * \throw Duplicate
+     */
+    void deregisterTransport(const Type& type);
+
+    /**
+     * Modify existing TransportHandler
+     * \throw Duplicate
+     */
+    void modifyTransport(const Type& type, TransportHandler handler);
+
 };
-
-/**
- * \class Context
- * \brief The Context allow to embed transport specific information if needed, but must at least
- * contain the created ticket for this message job
- */
-class Context
-{
-    Ticket ticket;
-    Type type;
-};
-
-typedef std::vector<Ticket> TicketList;
 
 } // end namespace message_transport
 } // end namespace service
 } // end namespace fipa
 
-#endif // FIPA_SERVICE_TRANSPORT_HPP
+#endif // FIPA_SERVICE_MESSAGE_TRANSPORT_SERVICE_HPP
