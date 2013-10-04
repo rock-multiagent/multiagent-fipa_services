@@ -32,7 +32,7 @@ void MessageTransport::handle(fipa::acl::Letter& letter) const
 void MessageTransport::handleError(const fipa::acl::Letter& letter) const
 {
     fipa::acl::ACLMessage errorMessage = createInternalErrorMessage(letter.getACLMessage(), "Message delivery failed! Delivery path: " + letter.getDeliveryPathString());
-    fipa::acl::Letter errorLetter(errorMessage, fipa::acl::message_format::BITEFFICIENT);
+    fipa::acl::Letter errorLetter(errorMessage, fipa::acl::representation::BITEFFICIENT);
     stamp(errorLetter);
     if(!forward(errorLetter))
     {
