@@ -4,7 +4,6 @@
   </description>
   <author>Thomas Roehr/thomas.roehr@dfki.de</author>
   <license></license>
-  <url>http://</url>
-  <logo>http://</logo>
+  <url>https://gitorious.org/rock-multiagent</url>
   <depend package="multiagent/fipa_acl" />
 </package>
