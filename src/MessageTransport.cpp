@@ -13,6 +13,7 @@ namespace message_transport {
 
 MessageTransport::MessageTransport(const fipa::acl::AgentID& id)
     : mAgentId(id)
+    , mRepresentation(fipa::acl::representation::BITEFFICIENT)
 {
 }
 
@@ -80,7 +81,7 @@ bool MessageTransport::handleInternalCommunication(const fipa::acl::Letter& lett
 void MessageTransport::handleError(const fipa::acl::Letter& letter) const
 {
     fipa::acl::ACLMessage errorMessage = createInternalErrorMessage(letter.getACLMessage(), "Message delivery failed! Delivery path: " + letter.getDeliveryPathString());
-    fipa::acl::Letter errorLetter(errorMessage, fipa::acl::representation::BITEFFICIENT);
+    fipa::acl::Letter errorLetter(errorMessage, mRepresentation);
     stamp(errorLetter);
     if(!forward(errorLetter))
     {
@@ -228,7 +229,7 @@ void MessageTransport::publishConnectionStatus(const std::vector<std::string>& a
 {
     LOG_INFO("MessageTransport '%s': publishing connection status", mAgentId.getName().c_str());
     fipa::acl::ACLMessage informMsg = createConnectionStatusUpdateMessage(allAgents, localAgents);
-    fipa::acl::Letter informLetter(informMsg, fipa::acl::representation::BITEFFICIENT);
+    fipa::acl::Letter informLetter(informMsg, mRepresentation);
 
     stamp(informLetter);
     if(!forward(informLetter))

@@ -42,6 +42,10 @@ private:
     // Map  clients to their associated transport services
     TransportResponsabilities mTransportResponsabilities;
 
+    // Representation which is used to exchange internal messages
+    // default is bitefficient
+    fipa::acl::representation::Type mRepresentation;
+
     /**
      * Stamp message for further delivery,
      * i.e. mark as handled by this message transport
@@ -128,6 +132,16 @@ public:
      * needs to be processed further
      */
     bool handleInternalCommunication(const fipa::acl::Letter& letter);
+
+    /** 
+     * Set the internal message representation type
+     */
+    void setInternalMessageRepresentationType(const fipa::acl::representation::Type& representation) { mRepresentation = representation; }
+
+    /**
+     * Get type of the internal message representation
+     */
+    fipa::acl::representation::Type getInternalMessageRepresentationType() const { return mRepresentation; }
 
 
 
