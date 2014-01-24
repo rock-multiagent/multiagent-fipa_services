@@ -14,13 +14,13 @@
    };
 
 namespace fipa {
-namespace service {
+namespace services {
 
 FIPA_SERVICE_EXCEPTION(DuplicateEntry, "Entry already exists")
 FIPA_SERVICE_EXCEPTION(NotFound, "Entry could not be found")
 FIPA_SERVICE_EXCEPTION(NotImplemented, "Function has not been implemeted yet")
 
-} // end namespace service
+} // end namespace services
 } // end namespace fipa
 
 #endif // FIPA_SERVICE_ERROR_HANDLING_HPP

@@ -4,7 +4,7 @@
 #include "ErrorHandling.hpp"
 
 namespace fipa {
-namespace service {
+namespace services {
 
 void ServiceDirectory::registerService(const ServiceDirectoryEntry& entry)
 {
@@ -75,5 +75,5 @@ ServiceDirectoryList ServiceDirectory::getAll() const
     return resultList;
 }
 
-} // end namespace service
+} // end namespace services
 } // end namespace fipa

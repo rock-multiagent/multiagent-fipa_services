@@ -8,7 +8,7 @@
 #include <boost/algorithm/string.hpp>
 
 namespace fipa {
-namespace service {
+namespace services {
 namespace message_transport {
 
 MessageTransport::MessageTransport(const fipa::acl::AgentID& id)
@@ -256,5 +256,5 @@ std::string MessageTransport::getResponsibleMessageTransport(const std::string& 
 }
 
 } // end namespace message_transport
-} // end namespace service
+} // end namespace services
 } // end namespace fipa

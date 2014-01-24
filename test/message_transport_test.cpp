@@ -5,7 +5,7 @@
 BOOST_AUTO_TEST_CASE(message_transport_internal_comm)
 {
     using namespace fipa::acl;
-    using namespace fipa::service::message_transport;
+    using namespace fipa::services::message_transport;
 
     MessageTransport messageTransport0(AgentID("mts-0"));
     MessageTransport messageTransport1(AgentID("mts-1"));

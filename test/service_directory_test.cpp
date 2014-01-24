@@ -16,7 +16,7 @@ std::string getProtocolPath()
 
 BOOST_AUTO_TEST_CASE(service_directory_test)
 {
-    using namespace fipa::service;
+    using namespace fipa::services;
 
     Name name("test-name");
     Type type;

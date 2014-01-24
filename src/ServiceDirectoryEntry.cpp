@@ -1,7 +1,7 @@
 #include "ServiceDirectoryEntry.hpp"
 
 namespace fipa {
-namespace service {
+namespace services {
 
 ServiceDirectoryEntry::ServiceDirectoryEntry()
     : mName()
@@ -18,4 +18,5 @@ ServiceDirectoryEntry::ServiceDirectoryEntry(const Name& name, const Type& type,
 {}
 
 } // end namespace service
+} // end namespace services
 } // end namespace fipa

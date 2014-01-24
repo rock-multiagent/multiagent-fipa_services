@@ -6,7 +6,7 @@
 #include <fipa_services/ErrorHandling.hpp>
 
 namespace fipa {
-namespace service {
+namespace services {
 
 class ServiceDirectory
 {
@@ -60,6 +60,6 @@ public:
 
 };
 
-} // end namespace service
+} // end namespace services
 } // end namespace fipa
 #endif // FIPA_SERVICES_SERVICE_DIRECTORY_HPP

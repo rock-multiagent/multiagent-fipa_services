@@ -6,8 +6,7 @@
 #include <string>
 
 namespace fipa {
-namespace service
-{
+namespace services {
 
 typedef std::string Name;
 typedef std::string Type;
@@ -51,7 +50,7 @@ public:
 typedef std::vector<ServiceDirectoryEntry> ServiceDirectoryList;
 typedef std::map<Name, ServiceDirectoryEntry> ServiceDirectoryMap;
 
-} // end namespace service
+} // end namespace services
 } // end namespace fipa
 
 #endif // FIPA_SERVICES_SERVICE_DIRECTORY_ENTRY_HPP

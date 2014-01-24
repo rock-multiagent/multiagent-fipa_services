@@ -17,7 +17,7 @@ namespace agent_management {
     }
 }
 
-namespace service {
+namespace services {
 namespace message_transport {
 
 typedef std::string Type;
@@ -148,7 +148,7 @@ public:
 };
 
 } // end namespace message_transport
-} // end namespace service
+} // end namespace services
 } // end namespace fipa
 
 #endif // FIPA_SERVICE_MESSAGE_TRANSPORT_SERVICE_HPP
