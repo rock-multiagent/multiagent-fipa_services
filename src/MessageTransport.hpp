@@ -11,10 +11,6 @@ namespace agent_management {
     const std::string ONTOLOGY = "fipa-agent-management";
     const std::string INTERNAL_ERROR = "internal-error";
     const std::string INTERNAL_COMMUNICATION = "internal-communication";
-
-    namespace internal_communication {
-        std::string CONNECTION_STATUS_UPDATE = "connection-status-update";
-    }
 }
 
 namespace services {
@@ -24,7 +20,6 @@ typedef std::string Type;
 typedef boost::function1<bool, const fipa::acl::Letter&> TransportHandler;
 typedef std::map<message_transport::Type, TransportHandler> TransportHandlerMap;
 typedef std::vector<message_transport::Type> TransportPriorityList;
-typedef std::map<std::string, std::vector<std::string> > TransportResponsabilities;
 
 /**
  * \class MessageTransport
@@ -38,9 +33,6 @@ private:
 
     TransportHandlerMap mTransportHandlerMap;
     TransportPriorityList mTransportPriorityList;
-
-    // Map  clients to their associated transport services
-    TransportResponsabilities mTransportResponsabilities;
 
     // Representation which is used to exchange internal messages
     // default is bitefficient
@@ -73,6 +65,8 @@ public:
     /**
      * \class MessageTransport
      * \param id Agent id for this message transport
+     * \param serviceDirectory ServiceDirectory that allows to resolve the locators (here: other mts
+     * for registered agents)
      */
     MessageTransport(const fipa::acl::AgentID& id);
 
@@ -108,23 +102,6 @@ public:
     void modifyTransport(const Type& type, TransportHandler handler);
 
     /**
-     * Forward the connection status to allAgents, excepts the localAgents
-     * since allAgents - localAgents == connected message transport services
-     */
-    void publishConnectionStatus(const std::vector<std::string>& allAgents, const std::vector<std::string>& localAgents);
-
-    /**
-     * Retrieve the message transport service that is responsible for the given client
-     * throws if no transport is found
-     */
-    std::string getResponsibleMessageTransport(const std::string& agent) const;
-
-    /**
-     * Create a status update letter which can be used for internal communication
-     */
-    fipa::acl::ACLMessage createConnectionStatusUpdateMessage(const std::vector<std::string>& allAgents, const std::vector<std::string>& localAgents) const;
-
-    /**
      * Handle an internal communication, i.e. for exchange of information between two message transport
      * services
      *
@@ -142,9 +119,6 @@ public:
      * Get type of the internal message representation
      */
     fipa::acl::representation::Type getInternalMessageRepresentationType() const { return mRepresentation; }
-
-
-
 };
 
 } // end namespace message_transport

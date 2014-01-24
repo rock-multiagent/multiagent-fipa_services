@@ -53,26 +53,7 @@ bool MessageTransport::handleInternalCommunication(const fipa::acl::Letter& lett
         if(message.getOntology() == fipa::agent_management::ONTOLOGY)
         {
             std::string content = message.getContent();
-            // Parsing communication string to extract the local agent names
-            // INTERNAL_COMMUNICATION CONNNECTION_STATUS_UPDATE local-agent-0,local-agent-1,
-            size_t found = content.find(fipa::agent_management::internal_communication::CONNECTION_STATUS_UPDATE);
-            if( found != std::string::npos)
-            {
-                // cut off everything before the content string
-                content = content.substr(found + fipa::agent_management::internal_communication::CONNECTION_STATUS_UPDATE.size() + 1);
-
-                // Parse the internal message to extract the local receivers
-                std::vector<std::string> localReceivers;
-
-                boost::split(localReceivers, content, boost::is_any_of(","));
-
-                // Set current responsability of sender (an MTS) regarding its attached
-                // local clients
-                std::string mts = letter.getBaseEnvelope().getFrom().getName();
-                LOG_INFO("MessageTransport (%s): updating local receivers: %s", mAgentId.getName().c_str(), content.c_str());
-                mTransportResponsabilities[mts] = localReceivers;
-                return true;
-            }
+            // handle content
         }
     }
     return false;
@@ -188,71 +169,6 @@ bool MessageTransport::forward(const fipa::acl::Letter& letter) const
         }
     }
     return success;
-}
-
-fipa::acl::ACLMessage MessageTransport::createConnectionStatusUpdateMessage(const std::vector<std::string>& allAgents, const std::vector<std::string>& localAgents) const
-{
-    using namespace fipa::acl;
-    ACLMessage informMsg;
-    std::string localAgentsString ="";
-    std::vector<std::string>::const_iterator it = allAgents.begin();
-    for(; it != allAgents.end(); ++it)
-    {
-        std::string receiverName = *it;
-        std::vector<std::string>::const_iterator lit = std::find(localAgents.begin(), localAgents.end(), receiverName);
-
-        if(lit == localAgents.end())
-        {
-            informMsg.addReceiver(AgentID(receiverName));
-        } else {
-            localAgentsString += receiverName;
-            localAgentsString += ",";
-        }
-    }
-    informMsg.setSender(mAgentId);
-    informMsg.setConversationID(base::Time::now().toString() + " internal-agentlist-update");
-
-    // Set field to allow identification of internal / fipa_agent_management messages
-    informMsg.setPerformative(ACLMessage::INFORM);
-    informMsg.setOntology(fipa::agent_management::ONTOLOGY);
-    std::string description = fipa::agent_management::internal_communication::CONNECTION_STATUS_UPDATE;
-
-    description = description + " " + localAgentsString;
-    informMsg.setContent(fipa::agent_management::INTERNAL_COMMUNICATION + " " + description);
-
-    LOG_DEBUG("MessageTransport: created inform msg with content '%s'", informMsg.getContent().c_str());
-
-    return informMsg;
-}
-
-void MessageTransport::publishConnectionStatus(const std::vector<std::string>& allAgents, const std::vector<std::string>& localAgents)
-{
-    LOG_INFO("MessageTransport '%s': publishing connection status", mAgentId.getName().c_str());
-    fipa::acl::ACLMessage informMsg = createConnectionStatusUpdateMessage(allAgents, localAgents);
-    fipa::acl::Letter informLetter(informMsg, mRepresentation);
-
-    stamp(informLetter);
-    if(!forward(informLetter))
-    {
-        // we do not if forwarding of the error fails
-        LOG_WARN("Forwarding of connection status update failed. Conversation id: %s", informMsg.getConversationID().c_str());
-    }
-}
-
-std::string MessageTransport::getResponsibleMessageTransport(const std::string& agentName) const
-{
-    TransportResponsabilities::const_iterator cit = mTransportResponsabilities.begin();
-    for(; cit != mTransportResponsabilities.end(); ++cit)
-    {
-        std::vector<std::string>::const_iterator agentCit = std::find(cit->second.begin(), cit->second.end(), agentName);
-        if(agentCit != cit->second.end())
-        {
-            return cit->first;
-        }
-    }
-
-    std::string message =  "MessageTransport: no message transport known which is responsable for agent '" + agentName + "'";
-    throw std::runtime_error(message);
 }
 
 } // end namespace message_transport
