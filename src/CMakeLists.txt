@@ -6,13 +6,11 @@ rock_library(fipa_services
         ServiceDirectory.cpp
         ServiceDirectoryEntry.cpp
     HEADERS 
+        ErrorHandling.hpp
         MessageTransport.hpp
         ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp
     LIBS ${Boost_REGEX_LIBRARY}
     DEPS_PKGCONFIG base-lib fipa_acl
 )
-
-#rock_executable(fipa_services_bin Main.cpp
-#    DEPS fipa_services)
 
