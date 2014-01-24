@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <base/Time.hpp>
 
 namespace fipa {
 namespace services {
@@ -13,37 +14,45 @@ typedef std::string Type;
 typedef std::string Locator;
 typedef std::string Description;
 
-class ServiceDirectoryEntry
+struct ServiceDirectoryEntry
 {
 
-private:
-    Name mName;
-    Type mType;
-    Locator mLocator;
-    Description mDescription;
+    Name name;
+    Type type;
+    Locator locator;
+    Description description;
+    base::Time timestamp;
 
-public:
+    enum Field { NAME = 0x01, TYPE = 0x02, LOCATOR = 0x04, DESCRIPTION = 0x08 };
 
     ServiceDirectoryEntry();
 
     ServiceDirectoryEntry(const Name& name, const Type& type, const Locator& locator, const Description& description);
 
     // Setter and getter for properties
-    Name getName() const { return mName; }
+    Name getName() const { return name; }
 
-    void setName(const Name& name) { mName = name; }
+    void setName(const Name& name) { this->name = name; }
 
-    Type getType() const { return mType; }
+    Type getType() const { return type; }
 
-    void setType(const Type& type) { mType = type; }
+    void setType(const Type& type) { this->type = type; }
 
-    Locator getLocator() const { return mLocator; }
+    Locator getLocator() const { return locator; }
 
-    void setLocator(const Locator& locator) { mLocator = locator; }
+    void setLocator(const Locator& locator) { this->locator = locator; }
 
-    Description getDescription() const { return mDescription; }
+    Description getDescription() const { return description; }
 
-    void setDescription(const Description& description) { mDescription = description; }
+    void setDescription(const Description& description) { this->description = description; }
+
+    /**
+     * Update the modification times of this
+     * entry
+     */
+    void updateTimestamp() { timestamp = base::Time::now(); }
+
+    std::string getFieldContent(ServiceDirectoryEntry::Field field) const;
 
 };
 
