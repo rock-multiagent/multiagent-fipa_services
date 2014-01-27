@@ -48,9 +48,12 @@ public:
     /**
      * Search for a service with a name matching the given 
      * regular expression
+     * \param regex Regular expression to match
+     * \param field Field name to apply the regex to
+     * \param doThrow Flag to control the throw behaviour, i.e. to throw an exception when no result has been found
      * \throw NotFound
      */
-    ServiceDirectoryList search(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME ) const;
+    ServiceDirectoryList search(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME, bool doThrow = true) const;
 
     /**
      * Modify an existing entry

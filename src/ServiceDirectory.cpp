@@ -47,7 +47,7 @@ ServiceDirectoryList ServiceDirectory::search(const ServiceDirectoryEntry& entry
     return search(entry.getName(), ServiceDirectoryEntry::NAME);
 }
 
-ServiceDirectoryList ServiceDirectory::search(const std::string& regex, ServiceDirectoryEntry::Field field) const
+ServiceDirectoryList ServiceDirectory::search(const std::string& regex, ServiceDirectoryEntry::Field field, bool doThrow) const
 {
     ServiceDirectoryMap::const_iterator it = mServices.begin();
     ServiceDirectoryList resultList;
@@ -130,7 +130,7 @@ std::set<std::string> ServiceDirectory::getUniqueFieldValues(const ServiceDirect
 
 void ServiceDirectory::clearSelectively(const std::string& regex, ServiceDirectoryEntry::Field field)
 {
-    ServiceDirectoryList list = ServiceDirectory::search(regex, field);
+    ServiceDirectoryList list = ServiceDirectory::search(regex, field, false);
     ServiceDirectoryList::const_iterator cit = list.begin();
     for(; cit != list.end(); ++cit)
     {
