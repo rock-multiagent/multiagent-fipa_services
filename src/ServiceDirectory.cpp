@@ -39,7 +39,7 @@ void ServiceDirectory::deregisterService(const std::string& regex, ServiceDirect
             return;
         }
     }
-    throw NotFound();
+    throw NotFound(regex);
 }
 
 ServiceDirectoryList ServiceDirectory::search(const ServiceDirectoryEntry& entry) const
@@ -63,9 +63,9 @@ ServiceDirectoryList ServiceDirectory::search(const std::string& regex, ServiceD
             resultList.push_back(entry);
         }
     }
-    if(resultList.empty())
+    if(resultList.empty() && doThrow)
     {
-        throw NotFound();
+        throw NotFound(regex);
     } else {
         return resultList;
     }
@@ -77,7 +77,7 @@ void ServiceDirectory::modify(const ServiceDirectoryEntry& entry)
 
     if(list.empty())
     {
-        throw NotFound();
+        throw NotFound(entry.getName());
     }
 
     mServices[entry.getName()] = entry;

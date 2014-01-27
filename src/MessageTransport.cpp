@@ -93,7 +93,7 @@ void MessageTransport::deregisterTransport(const message_transport::Type& type)
     TransportHandlerMap::iterator it = mTransportHandlerMap.find(type);
     if(it == mTransportHandlerMap.end())
     {
-        throw NotFound();
+        throw NotFound("transport type: " + type );
     }
 
     // Remove from priority list
@@ -109,7 +109,7 @@ void MessageTransport::modifyTransport(const message_transport::Type& type, Tran
     TransportHandlerMap::iterator it = mTransportHandlerMap.find(type);
     if(it == mTransportHandlerMap.end())
     {
-        throw NotFound();
+        throw NotFound("transport type: " + type);
     }
 
     mTransportHandlerMap[type] = handler;

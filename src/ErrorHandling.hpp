@@ -16,9 +16,9 @@
 namespace fipa {
 namespace services {
 
-FIPA_SERVICE_EXCEPTION(DuplicateEntry, "Entry already exists")
-FIPA_SERVICE_EXCEPTION(NotFound, "Entry could not be found")
-FIPA_SERVICE_EXCEPTION(NotImplemented, "Function has not been implemeted yet")
+FIPA_SERVICE_EXCEPTION(DuplicateEntry, "Entry already exists: ")
+FIPA_SERVICE_EXCEPTION(NotFound, "Entry could not be found: ")
+FIPA_SERVICE_EXCEPTION(NotImplemented, "Function has not been implemeted yet: ")
 
 } // end namespace services
 } // end namespace fipa
