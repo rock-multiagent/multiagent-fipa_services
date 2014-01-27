@@ -13,6 +13,7 @@ ServiceDirectory::ServiceDirectory()
 
 void ServiceDirectory::registerService(const ServiceDirectoryEntry& entry)
 {
+    boost::unique_lock<boost::mutex> lock(mMutex);
     mServices[entry.getName()] = entry;
     updateTimestamp();
 }
@@ -24,6 +25,7 @@ void ServiceDirectory::deregisterService(const ServiceDirectoryEntry& entry)
 
 void ServiceDirectory::deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field)
 {
+    boost::unique_lock<boost::mutex> lock(mMutex);
     ServiceDirectoryMap::iterator it = mServices.begin();
 
     boost::regex r(regex);

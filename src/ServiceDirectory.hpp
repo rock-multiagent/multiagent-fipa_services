@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <boost/thread.hpp>
 #include <fipa_services/ServiceDirectoryEntry.hpp>
 #include <fipa_services/ErrorHandling.hpp>
 
@@ -14,6 +15,8 @@ class ServiceDirectory
 {
     ServiceDirectoryMap mServices;
     base::Time mTimestamp;
+
+    boost::mutex mMutex;
 
 public:
 
