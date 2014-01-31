@@ -5,12 +5,14 @@ rock_library(fipa_services
         MessageTransport.cpp
         ServiceDirectory.cpp
         ServiceDirectoryEntry.cpp
+        transports/udt/UDTTransport.cpp
     HEADERS 
         ErrorHandling.hpp
         MessageTransport.hpp
         ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp
-    LIBS ${Boost_REGEX_LIBRARY} ${Boost_THREAD_LIBRARY}
+        transports/udt/UDTTransport.hpp
+    LIBS ${Boost_REGEX_LIBRARY} ${Boost_THREAD_LIBRARY} udt
     DEPS_PKGCONFIG base-lib fipa_acl
 )
 
