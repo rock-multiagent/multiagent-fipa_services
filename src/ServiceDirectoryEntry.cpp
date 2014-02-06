@@ -1,18 +1,27 @@
 #include "ServiceDirectoryEntry.hpp"
+#include <boost/assign/list_of.hpp>
+#include <base/Logging.hpp>
 
 namespace fipa {
 namespace services {
 
+std::map<ServiceDirectoryEntry::Field, std::string> ServiceDirectoryEntry::FieldTxt = boost::assign::map_list_of
+    (ServiceDirectoryEntry::NAME, "NAME")
+    (ServiceDirectoryEntry::TYPE, "TYPE")
+    (ServiceDirectoryEntry::LOCATOR, "LOCATOR")
+    (ServiceDirectoryEntry::DESCRIPTION, "DESCRIPTION")
+    (ServiceDirectoryEntry::TIMESTAMP, "TIMESTAMP")
+    ;
+
 ServiceDirectoryEntry::ServiceDirectoryEntry()
-    : timestamp( base::Time::now() )
 {}
 
-ServiceDirectoryEntry::ServiceDirectoryEntry(const Name& name, const Type& type, const Locator& locator, const Description& description)
-    : name(name)
-    , type(type)
-    , locator(locator)
-    , description(description)
-    , timestamp( base::Time::now() )
+ServiceDirectoryEntry::ServiceDirectoryEntry(const Name& name, const Type& type, const ServiceLocator& locator, const Description& description)
+    : mName(name)
+    , mType(type)
+    , mLocator(locator)
+    , mDescription(description)
+    , mTimestamp( base::Time::now() )
 {}
 
 std::string ServiceDirectoryEntry::getFieldContent(ServiceDirectoryEntry::Field field) const
@@ -21,12 +30,43 @@ std::string ServiceDirectoryEntry::getFieldContent(ServiceDirectoryEntry::Field 
     {
         case NAME: return getName();
         case TYPE: return getType();
-        case LOCATOR: return getLocator();
+        case LOCATOR: return getLocator().toString();
         case DESCRIPTION: return getDescription();
+        case TIMESTAMP: return getTimestamp().toString();
         default: assert(-1);
     }
 
     return "";
+}
+
+void ServiceDirectoryEntry::setFieldContent(ServiceDirectoryEntry::Field field, const std::string& content)
+{
+    try {
+        switch(field)
+        {
+            case NAME:
+                mName = content;
+                break;
+            case TYPE:
+                mType = content;
+                break;
+            case LOCATOR:
+                mLocator = ServiceLocator::fromString(content);
+                break;
+            case DESCRIPTION:
+                mDescription = content;
+                break;
+            case TIMESTAMP:
+                mTimestamp = base::Time::fromString(content);
+                break;
+            default:
+                assert(-1);
+        }
+    } catch(const std::runtime_error& e)
+    {
+        LOG_WARN("Failed to convert field content: field '%s', content '%s'", ServiceDirectoryEntry::FieldTxt[field].c_str(), content.c_str());
+        throw;
+    }
 }
 
 } // end namespace services
