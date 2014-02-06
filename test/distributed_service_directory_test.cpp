@@ -1,5 +1,6 @@
 #include <boost/test/auto_unit_test.hpp>
 #include <iostream>
+#include <sstream>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 BOOST_AUTO_TEST_SUITE(distributed_service_directory_suite)
 
@@ -54,9 +55,21 @@ BOOST_AUTO_TEST_CASE(distributed_service_directory_test)
 
     DistributedServiceDirectory distributedServiceDirectory;
     BOOST_REQUIRE_THROW( distributedServiceDirectory.search(name, ServiceDirectoryEntry::NAME, true), NotFound );
-    distributedServiceDirectory.registerService(entry);
+    for(int i = 0; i < 5; ++i)
+    {
+        std::stringstream ss;
+        ss << "base_" << i;
+        ServiceDirectoryEntry entry(ss.str(), type, locator, description);
+        distributedServiceDirectory.registerService(entry);
+    }
+
     sleep(5);
-    BOOST_REQUIRE_NO_THROW( distributedServiceDirectory.search(name, ServiceDirectoryEntry::NAME, true));
+    for(int i = 0; i < 5; ++i)
+    {
+        std::stringstream ss;
+        ss << "base_" << i;
+        BOOST_REQUIRE_NO_THROW( distributedServiceDirectory.search(ss.str(), ServiceDirectoryEntry::NAME, true));
+    }
 }
 
 
