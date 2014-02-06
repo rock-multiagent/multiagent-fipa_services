@@ -12,11 +12,11 @@ namespace udt {
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES = 20*1024*1024;
 
 Connection::Connection()
-    : mPort(-1)
+    : mPort(0)
     , mIP("0.0.0.0")
 {}
 
-Connection::Connection(const std::string& ip, int16_t port)
+Connection::Connection(const std::string& ip, uint16_t port)
     : mPort(port)
     , mIP(ip)
 {}
@@ -24,7 +24,7 @@ Connection::Connection(const std::string& ip, int16_t port)
 OutgoingConnection::OutgoingConnection()
 {}
 
-OutgoingConnection::OutgoingConnection(const std::string& ipaddress, int16_t port)
+OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t port)
     : Connection(ipaddress, port)
 {
     connect(ipaddress, port);
@@ -36,7 +36,7 @@ OutgoingConnection::~OutgoingConnection()
 }
 
 
-void OutgoingConnection::connect(const std::string& ipaddress, int16_t port)
+void OutgoingConnection::connect(const std::string& ipaddress, uint16_t port)
 {
     mSocket = UDT::socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -60,7 +60,7 @@ void OutgoingConnection::connect(const std::string& ipaddress, int16_t port)
     }
 }
 
-void OutgoingConnection::sendMessage(const std::string& data, int ttl, bool inorder)
+void OutgoingConnection::sendData(const std::string& data, int ttl, bool inorder) const
 {
     int result = UDT::sendmsg(mSocket, data.data(), data.size(), ttl, inorder);
     if( UDT::ERROR == result)
@@ -72,6 +72,14 @@ void OutgoingConnection::sendMessage(const std::string& data, int ttl, bool inor
     }
 }
 
+
+void OutgoingConnection::sendLetter(const fipa::acl::Letter& letter, int ttl, bool inorder) const
+{
+    using namespace fipa::acl;
+    std::string encodedData = EnvelopeGenerator::create(letter, representation::BITEFFICIENT);
+    sendData(encodedData, ttl, inorder);
+}
+
 IncomingConnection::IncomingConnection()
 {}
 
@@ -80,26 +88,29 @@ IncomingConnection::~IncomingConnection()
     UDT::close(mSocket);
 }
 
-IncomingConnection::IncomingConnection(const UDTSOCKET& socket, const std::string& ip, int16_t port)
+IncomingConnection::IncomingConnection(const UDTSOCKET& socket, const std::string& ip, uint16_t port)
     : Connection(ip, port)
     , mSocket(socket)
 {
 }
 
-int IncomingConnection::receiveMessage(char* buffer, size_t size)
+int IncomingConnection::receiveMessage(char* buffer, size_t size) const
 {
     int result = UDT::recvmsg(mSocket, buffer, size);
     if(result == UDT::ERROR)
     {
         switch(UDT::getlasterror().getErrorCode())
         {
+            case 6002: // no data is available to be received on a non-blocking socket
+                break;
             case 2001: // connection broken before send is completed
             case 2002: // not connected
             case 5004: // invalid UDT socket
             case 5009: // wrong mode
-                throw std::runtime_error("fipa::services::udt::IncomingConnection: " + std::string(UDT::getlasterror().getErrorMessage()));
+            case 6003: // no buffer available for the non-blocing rcv call
+            case 6004: // an overlapped recv is in progress
             default:
-                break;
+                throw std::runtime_error("fipa::services::udt::IncomingConnection: " + std::string(UDT::getlasterror().getErrorMessage()));
         }
     }
 
@@ -125,7 +136,7 @@ Node::~Node()
     delete mpBuffer;
 }
 
-void Node::listen(int32_t port, uint32_t maxClients)
+void Node::listen(uint16_t port, uint32_t maxClients)
 {
     sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
@@ -140,20 +151,26 @@ void Node::listen(int32_t port, uint32_t maxClients)
         throw std::runtime_error( buffer );
     }
 
-    mPort = ntohs(serv_addr.sin_port);
-    char buffer[20];
-    if( NULL != inet_ntop(AF_INET, &serv_addr.sin_addr, buffer, 20))
-    {
-        mIP = std::string(buffer);
-    }
-
     if( UDT::ERROR == UDT::listen(mServerSocket, maxClients))
     {
         throw std::runtime_error("fipa_service::udt::Node: could not start listening. " +
                 std::string(UDT::getlasterror().getErrorMessage()));
     } else {
-        LOG_DEBUG("fipa::udt::Node: started listening");
+        sockaddr_in sock_addr;
+        int len = sizeof(sock_addr);
+        if(UDT::ERROR == UDT::getsockname(mServerSocket, (sockaddr*) &sock_addr, &len) )
+        {
+            throw std::runtime_error("fipa_service::udt::Node: retrieving socket information failed. " +
+                std::string(UDT::getlasterror().getErrorMessage()));
+        }
 
+        char buffer[20];
+        if( NULL != inet_ntop(AF_INET, &sock_addr.sin_addr, buffer, 20))
+        {
+            mIP = std::string(buffer);
+        }
+
+        mPort = ntohs(sock_addr.sin_port);
     }
 }
 
@@ -168,12 +185,12 @@ bool Node::accept()
         if(client != UDT::INVALID_SOCK)
         {
 
-            int16_t port = ntohs(other_addr.sin_port);
+            uint16_t port = ntohs(other_addr.sin_port);
             char buffer[20];
             if( NULL != inet_ntop(AF_INET, &other_addr.sin_addr, buffer, 20))
             {
                 std::string ip = std::string(buffer);
-                mClients.push_back( IncomingConnection(client, ip, port) );
+                mClients.push_back( IncomingConnectionPtr(new IncomingConnection(client, ip, port)) );
                 success = true;
             }
         } else {
@@ -185,6 +202,8 @@ bool Node::accept()
 
 void Node::update(bool readAll)
 {
+    using namespace fipa::acl;
+
     IncomingConnections cleanupList;
 
     while(true)
@@ -193,16 +212,24 @@ void Node::update(bool readAll)
         bool messageFound = false;
         for(;it != mClients.end(); ++it)
         {
-            IncomingConnection clientConnection  = *it;
+            IncomingConnectionPtr clientConnection  = *it;
             try {
-                if( clientConnection.receiveMessage(mpBuffer, mBufferSize) > 0)
+                int size = 0;
+                if( (size = clientConnection->receiveMessage(mpBuffer, mBufferSize)) > 0)
                 {
-                    messageFound = true;
-                    // cycles through all clients once and update
-                    mMessageQueue.push( std::string(mpBuffer) );
+                    Letter letter;
+                    std::string data(mpBuffer, size);
+                    if(!mEnvelopeParser.parseData(data, letter, representation::BITEFFICIENT))
+                    {
+                        LOG_WARN("Failed to parse letter");
+                    } else {
+                        mLetterQueue.push(letter);
+                        messageFound = true;
+                    }
                 }
             } catch(const std::runtime_error& e)
             {
+                LOG_WARN("Receiving data failed: %s", e.what());
                 cleanupList.push_back(clientConnection);
             }
         }
@@ -224,6 +251,13 @@ void Node::update(bool readAll)
             break;
         }
     }
+}
+
+fipa::acl::Letter Node::nextLetter()
+{
+    fipa::acl::Letter letter = mLetterQueue.front();
+    mLetterQueue.pop();
+    return letter;
 }
 
 } // end namespace udt
