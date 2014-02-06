@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE(service_directory_test)
 
     Name name("test-name");
     Type type;
-    Locator locator;
+    ServiceLocator locator;
     Description description;
 
 
