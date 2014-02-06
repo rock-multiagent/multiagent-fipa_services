@@ -16,6 +16,7 @@ class ServiceDirectory
     ServiceDirectoryMap mServices;
     base::Time mTimestamp;
 
+protected:
     boost::mutex mMutex;
 
 public:
@@ -27,7 +28,7 @@ public:
      * \param entry description object to add
      * \throws DuplicateEntry
      */
-    void registerService(const ServiceDirectoryEntry& entry);
+    virtual void registerService(const ServiceDirectoryEntry& entry);
 
     /**
      * Deregister service
@@ -40,7 +41,7 @@ public:
      * Remove a service by name
      * \param name Name of the service
      */
-    void deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME);
+    virtual void deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME);
 
     /**
      * Search for a service matching the given
@@ -56,7 +57,7 @@ public:
      * \param doThrow Flag to control the throw behaviour, i.e. to throw an exception when no result has been found
      * \throw NotFound
      */
-    ServiceDirectoryList search(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME, bool doThrow = true) const;
+    virtual ServiceDirectoryList search(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME, bool doThrow = true) const;
 
     /**
      * Modify an existing entry
@@ -86,7 +87,7 @@ public:
      * when locator is set for seletive merge then all instances with a locator occuring in the update
      * are removed from the service directory to be updated
      */
-    void mergeSelectively(const ServiceDirectoryList& updateList, ServiceDirectoryEntry::Field selectiveMerge);
+    virtual void mergeSelectively(const ServiceDirectoryList& updateList, ServiceDirectoryEntry::Field selectiveMerge);
 
 private:
     /**

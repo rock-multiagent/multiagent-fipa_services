@@ -41,7 +41,7 @@ void ServiceDirectory::deregisterService(const std::string& regex, ServiceDirect
             return;
         }
     }
-    throw NotFound(regex);
+    throw NotFound("ServiceDirectoryEntry matching '" + regex + "'");
 }
 
 ServiceDirectoryList ServiceDirectory::search(const ServiceDirectoryEntry& entry) const
@@ -67,7 +67,7 @@ ServiceDirectoryList ServiceDirectory::search(const std::string& regex, ServiceD
     }
     if(resultList.empty() && doThrow)
     {
-        throw NotFound(regex);
+        throw NotFound("ServiceDirectoryEntry matching '" + regex + "'");
     } else {
         return resultList;
     }
