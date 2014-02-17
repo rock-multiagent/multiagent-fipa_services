@@ -6,6 +6,6 @@
   <license></license>
   <url>https://gitorious.org/rock-multiagent</url>
   <depend package="multiagent/fipa_acl" />
-  <depend package="tools/service_directory" />
+  <depend package="tools/service_discovery" />
   <depend package="udt" />
 </package>
