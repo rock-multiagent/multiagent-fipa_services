@@ -69,5 +69,16 @@ void ServiceDirectoryEntry::setFieldContent(ServiceDirectoryEntry::Field field, 
     }
 }
 
+std::string ServiceDirectoryEntry::toString() const
+{
+    std::string txt;
+    txt += "ServiceDirectoryEntry: " + getName() + "\n";
+    txt += "    type: " + getType() + "\n";
+    txt += "    locator: " + getLocator().toString() + "\n";
+    txt += "    description: " + getLocator().toString() + "\n";
+
+    return txt;
+}
+
 } // end namespace services
 } // end namespace fipa

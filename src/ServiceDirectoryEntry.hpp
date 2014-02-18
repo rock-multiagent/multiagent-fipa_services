@@ -81,6 +81,12 @@ public:
      */
     bool operator<(const ServiceDirectoryEntry& other) const { return this->getName() < other.getName(); }
 
+    /**
+     * Convert to string representations
+     * \return String representation
+     */
+    std::string toString() const;
+
 };
 
 typedef std::vector<ServiceDirectoryEntry> ServiceDirectoryList;
