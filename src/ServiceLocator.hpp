@@ -32,6 +32,12 @@ public:
 
     std::string toString() const;
     static ServiceLocation fromString(const std::string& locationString);
+
+    /**
+     * Equals operator for service location
+     * \return true if service locations are equal
+     */
+    bool operator==(const ServiceLocation& other);
 };
 
 typedef std::vector<ServiceLocation> ServiceLocations;

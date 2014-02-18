@@ -45,7 +45,11 @@ ServiceLocation ServiceLocation::fromString(const std::string& locationString)
     }
 
     return location;
+}
 
+bool ServiceLocation::operator==(const ServiceLocation& other)
+{
+    return mServiceAddress == other.mServiceAddress && mServiceSignature == other.mServiceSignature && mSignatureType == other.mSignatureType;
 }
 
 void ServiceLocator::updateFromString(const std::string& locations)
