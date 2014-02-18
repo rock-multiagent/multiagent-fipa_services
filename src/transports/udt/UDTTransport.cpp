@@ -11,6 +11,37 @@ namespace udt {
 
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES = 20*1024*1024;
 
+Address::Address(const std::string& ip, uint16_t port)
+    : ip(ip)
+    , port(port)
+{}
+
+std::string Address::toString() const
+{
+    char buffer[128];
+    snprintf(buffer, 128, "udt://%s:%d",ip.c_str(),port);
+    return std::string(buffer);
+}
+
+Address Address::fromString(const std::string& addressString)
+{
+    boost::regex r("udt://([^:]*):([0-9]{1,5})");
+    boost::smatch what;
+    if(boost::regex_match( addressString ,what,r))
+    {
+        std::string address(what[1].first, what[1].second);
+        uint16_t port = atoi( std::string(what[2].first, what[2].second).c_str() );
+        return Address(address, port);
+    } else {
+        throw ArgumentError("address '" + addressString + "' malformatted");
+    }
+}
+
+bool Address::operator==(const Address& other) const
+{
+    return this->ip == other.ip && this->port == other.port;
+}
+
 Connection::Connection()
     : mPort(0)
     , mIP("0.0.0.0")
@@ -28,6 +59,11 @@ OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t po
     : Connection(ipaddress, port)
 {
     connect(ipaddress, port);
+}
+
+OutgoingConnection::OutgoingConnection(const Address& address)
+{
+    connect(address);
 }
 
 OutgoingConnection::~OutgoingConnection()
