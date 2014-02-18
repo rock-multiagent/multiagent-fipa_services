@@ -31,4 +31,11 @@ BOOST_AUTO_TEST_CASE(udt_transport_test)
 
     BOOST_REQUIRE_MESSAGE(receivedMessage.getContent() == message.getContent(), "Content received '" << receivedMessage.getContent() << "' expected '" << envelope.getACLMessage().getContent() << "'");
 
+    std::string ip = "192.168.0.1";
+    uint16_t port = 12391;
+
+    Address address(ip, port);
+    BOOST_REQUIRE_MESSAGE(address.toString() == "udt://192.168.0.1:12391", "Address toString '" << address.toString() << "'");
+    Address addressFromString = Address::fromString( address.toString() );
+    BOOST_REQUIRE_MESSAGE( addressFromString == address, "Address correctly generated and parsed again: '" << addressFromString.toString() << "'");
 }
