@@ -1,7 +1,12 @@
 #include "UDTTransport.hpp"
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <stdexcept>
 #include <string.h>
+#include <base/Logging.hpp>
+#include <boost/regex.hpp>
 
 using namespace UDT;
 
@@ -76,24 +81,36 @@ void OutgoingConnection::connect(const std::string& ipaddress, uint16_t port)
 {
     mSocket = UDT::socket(AF_INET, SOCK_DGRAM, 0);
 
-    sockaddr_in serv_addr;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    if(ipaddress == "0.0.0.0")
-    {
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-    } else if(1 != inet_pton(AF_INET, ipaddress.c_str(), &serv_addr.sin_addr))
-    {
-        throw std::runtime_error("fipa_service::udt::OutgoingConnection: invalid ip address'" + ipaddress + "'");
-    }
-    memset(&(serv_addr.sin_zero), '\0', 8);
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
 
-    if( UDT::ERROR == UDT::connect(mSocket, (sockaddr*) & serv_addr, sizeof(serv_addr)))
+    char portTxt[6];
+    snprintf(portTxt,6,"%hu",port);
+
+    struct addrinfo* addresses;
+    if(0 != getaddrinfo(ipaddress.c_str(), portTxt, &hints, &addresses) )
     {
-        throw std::runtime_error("fipa_service::udt::OutgoingConnection: " + std::string( UDT::getlasterror().getErrorMessage()) );
-    } else {
-        LOG_WARN("Connection to %s:%d established", ipaddress.c_str(), port);
+        throw std::runtime_error("fipa_service::udt::OutgoingConnection: invalid ip address / unresolvable host '" + ipaddress + ":" + std::string(portTxt) + "'");
     }
+
+    struct addrinfo* currentAddress;
+    for(currentAddress = addresses; currentAddress != NULL; currentAddress = currentAddress->ai_next)
+    {
+        struct sockaddr_in *addr;
+        addr = (struct sockaddr_in *) currentAddress->ai_addr;
+        memset(&(addr->sin_zero), '\0', 8);
+
+        if( UDT::ERROR == UDT::connect(mSocket, (sockaddr*) addr, sizeof(struct sockaddr)))
+        {
+            LOG_WARN("Connection to %s:%hu could not be established",inet_ntoa((struct in_addr)addr->sin_addr), ntohs(addr->sin_port));
+        } else {
+            LOG_INFO("Connection to %s:%hu established",inet_ntoa((struct in_addr)addr->sin_addr), ntohs(addr->sin_port));
+            return;
+        }
+    }
+
+    throw std::runtime_error("fipa_service::udt::OutgoingConnection: connection failed");
 }
 
 void OutgoingConnection::sendData(const std::string& data, int ttl, bool inorder) const
@@ -200,12 +217,13 @@ void Node::listen(uint16_t port, uint32_t maxClients)
                 std::string(UDT::getlasterror().getErrorMessage()));
         }
 
-        char buffer[20];
-        if( NULL != inet_ntop(AF_INET, &sock_addr.sin_addr, buffer, 20))
+        char hostname[HOST_NAME_MAX];
+        if(0 == gethostname(hostname,HOST_NAME_MAX))
         {
-            mIP = std::string(buffer);
+            mIP = std::string(hostname);
+        } else {
+            throw std::runtime_error("fipa_service::udt::Node: could not get hostname");
         }
-
         mPort = ntohs(sock_addr.sin_port);
     }
 }
