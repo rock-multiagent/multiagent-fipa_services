@@ -7,6 +7,10 @@
 namespace fipa {
 namespace services {
 
+/**
+ * \class ServiceLocation
+ * \brief Class to describe the location of a service
+ */
 class ServiceLocation
 {
     std::string mServiceAddress;
@@ -78,21 +82,22 @@ public:
     ServiceLocations search(const std::string& regex, ServiceLocation::Field field = ServiceLocation::SIGNATURE_TYPE);
 
     /**
-     * Parses a string using \n or ';' as separators and
+     * Parses a string using ';' as separators and
      * updates the ServiceLocator object
      */
     void updateFromString(const std::string& locations);
 
     /**
-     * Create a ServiceLocator object from and existing
+     * Create a ServiceLocator object from an existing
      * string
-     * \see getFirstLocation for valid separators in the string
+     * \see toString for valid separators in the string
      * \return the ServiceLocator object
      */
     static ServiceLocator fromString(const std::string& locations);
 
     /**
      * Create string representation of service locator
+     * <address>;<signature-type>;<service-signature>
      */
     std::string toString() const;
 };
