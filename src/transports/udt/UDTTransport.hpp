@@ -51,7 +51,8 @@ protected:
     std::string mIP;
 public:
     Connection();
-    Connection(const std::string& ip, uint16_t);
+    Connection(const std::string& ip, uint16_t port);
+    Connection(const Address& address);
 
     uint16_t getPort() const { return mPort; }
     std::string getIP() const { return mIP; }

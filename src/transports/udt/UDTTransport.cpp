@@ -58,6 +58,11 @@ Connection::Connection(const std::string& ip, uint16_t port)
     , mIP(ip)
 {}
 
+Connection::Connection(const Address& address)
+    : mPort(address.port)
+    , mIP(address.ip)
+{}
+
 OutgoingConnection::OutgoingConnection()
 {}
 
@@ -68,6 +73,7 @@ OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t po
 }
 
 OutgoingConnection::OutgoingConnection(const Address& address)
+    : Connection(address)
 {
     connect(address);
 }
