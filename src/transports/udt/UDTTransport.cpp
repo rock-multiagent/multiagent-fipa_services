@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <ifaddrs.h>
 #include <stdexcept>
 #include <string.h>
 #include <base/Logging.hpp>
@@ -312,6 +313,36 @@ fipa::acl::Letter Node::nextLetter()
     fipa::acl::Letter letter = mLetterQueue.front();
     mLetterQueue.pop();
     return letter;
+}
+
+Address Node::getAddress(const std::string& interfaceName)
+{
+    struct ifaddrs* interfaces;
+
+    if(0 == getifaddrs(&interfaces))
+    {
+        struct ifaddrs* interface;
+        for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
+        {
+            if(interface->ifa_addr->sa_family == AF_INET)
+            {
+                // Match
+                if(interfaceName == std::string(interface->ifa_name))
+                {
+                    struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
+                    char* addr = inet_ntoa(sa->sin_addr);
+                    std::string ip = std::string(addr);
+
+                    freeifaddrs(interfaces);
+
+                    return Address(ip , mPort);
+                }
+            }
+        }
+    }
+
+    freeifaddrs(interfaces);
+    throw std::runtime_error("fipa::services::udt::Node: could not get interface address of '" + interfaceName + "'");
 }
 
 } // end namespace udt

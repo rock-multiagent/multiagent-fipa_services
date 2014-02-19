@@ -165,7 +165,7 @@ public:
     /**
      * Get address of this node
      */
-    Address getAddress() { return Address(getIP(),getPort()); }
+    Address getAddress(const std::string& interfaceName);
 
 };
 
