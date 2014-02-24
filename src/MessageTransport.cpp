@@ -138,6 +138,7 @@ fipa::acl::ACLMessage MessageTransport::createInternalErrorMessage(const fipa::a
     errorMsg.setSender(mAgentId);
     errorMsg.setConversationID( msg.getConversationID());
     errorMsg.setInReplyTo( msg.getReplyWith());
+    errorMsg.setProtocol(msg.getProtocol());
 
     // Set field to allow identification of internal / fipa_agent_management error
     errorMsg.setPerformative(ACLMessage::FAILURE);
