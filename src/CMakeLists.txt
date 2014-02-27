@@ -16,7 +16,7 @@ rock_library(fipa_services
         ServiceDirectory.hpp
         ServiceLocator.hpp
         transports/udt/UDTTransport.hpp
-    LIBS ${Boost_REGEX_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} udt
+    LIBS ${Boost_REGEX_LIBRARIES} ${Boost_THREAD_LIBRARIES} ${Boost_SYSTEM_LIBRARIES} udt
     DEPS_PKGCONFIG base-lib fipa_acl service_discovery
 )
 
