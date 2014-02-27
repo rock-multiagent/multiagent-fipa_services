@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS thread regex unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS thread regex system unit_test_framework REQUIRED)
 
 rock_library(fipa_services
     SOURCES 
@@ -16,7 +16,7 @@ rock_library(fipa_services
         ServiceDirectory.hpp
         ServiceLocator.hpp
         transports/udt/UDTTransport.hpp
-    LIBS ${Boost_REGEX_LIBRARY} ${Boost_THREAD_LIBRARY} udt
+    LIBS ${Boost_REGEX_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} udt
     DEPS_PKGCONFIG base-lib fipa_acl service_discovery
 )
 
