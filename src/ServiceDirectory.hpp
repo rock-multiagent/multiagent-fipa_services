@@ -45,7 +45,8 @@ public:
 
     /**
      * Remove a service by name
-     * \param name Name of the service
+     * \param regex regular expression
+     * \param field field to apply the regular expression on, default is name of the entry
      */
     virtual void deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field = ServiceDirectoryEntry::NAME);
 

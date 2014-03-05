@@ -16,6 +16,10 @@ typedef std::string Description;
 
 // http://www.fipa.org/specs/fipa00001/SC00001L.html#_Toc26668641
 
+/**
+ * \class ServiceDirectoryEntry
+ * \brief The entry definition for a service directory, containing name, type, locator and description
+ */
 class ServiceDirectoryEntry
 {
     Name mName;

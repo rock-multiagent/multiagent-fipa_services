@@ -25,6 +25,41 @@ typedef std::vector<message_transport::Type> TransportPriorityList;
  * \class MessageTransport
  * \brief Service responsible for handling FIPA message and managing the forwarding
  *  and relaying
+ * \details
+ * Usage example of the MessageTransport class
+ * \verbatim
+ #include <iostream>
+
+ class CustomTransport
+ {
+ public:
+     bool deliverForwardLetter(const fipa::acl::Letter& letter)
+     {
+         fipa::acl::ACLMessage msg = letter.getACLMessage();
+         std::cout << msg.getContent() << std::end;
+         return true;
+     }
+ };
+
+ #include <fipa_services/FipaServices.hpp>
+ #include <boost/bind.hpp>
+
+ using fipa::acl::message_transport;
+
+ MessageTransport mts("my-mts");
+ mts.registerTransport("default-internal-transport", boost::bind(&CustomTransporter::deliverOrForwardLetter, this, _1));
+
+ ...
+ // Some letter from somewhere, here just manually constructed
+ using fipa::acl;
+ ACLMessage msg;
+ msg.setSender( AgentID("my-agent") );
+ Letter letter( msg, representation::BITEFFICIENT );
+ ...
+ mts.handle(letter);
+ ...
+ 
+ \endverbatim
  */
 class MessageTransport
 {
@@ -63,9 +98,8 @@ private:
 public:
 
     /**
-     * \class MessageTransport
+     * \brief Constructor for MessageTransport
      * \param id Agent id for this message transport
-     * \param serviceDirectory ServiceDirectory that allows to resolve the locators (here: other mts
      * for registered agents)
      */
     MessageTransport(const fipa::acl::AgentID& id);

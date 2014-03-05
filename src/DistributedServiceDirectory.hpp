@@ -9,6 +9,24 @@ namespace services {
 /**
  * \class DistributedServiceDirectory
  * \brief Implementation of a distributed service directory using the functionality of Avahi
+ * \details The distributed service directory allows to register services which are then published
+ * in a given avahi domain (default is _fipa_service_directory._udp). Each service can be associated
+ * with information on how to access the service. This is done constructing a ServiceLocator object and specifying a service locator. 
+ * \see http://www.fipa.org/specs/fipa00001/SC00001L.html#_Toc26668707
+ * \verbatim
+ #include <fipa_services/DistributedServiceDirectory.hpp>
+
+ using namespace fipa::services;
+ DistributedServiceDirectory directory;
+
+ ServiceLocator locator;
+ locator.addLocation("tcp://192.168.1.1:2000","agent-signature-type","agent-service-signature");
+ ServiceDirectoryEntry client("local-agent","type-of-agent",locator, "Description of local-agent");
+ directory.registerService(client);
+
+ fipa::services::ServiceDirectory list = directory.search("other-agent", ServiceDirectoryEntry::NAME, false);
+
+ \endverbatim
  */
 class DistributedServiceDirectory : public ServiceDirectory
 {

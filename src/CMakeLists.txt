@@ -11,6 +11,7 @@ rock_library(fipa_services
     HEADERS 
         DistributedServiceDirectory.hpp
         ErrorHandling.hpp
+        FipaServices.hpp
         MessageTransport.hpp
         ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp

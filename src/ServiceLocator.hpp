@@ -46,6 +46,11 @@ public:
 
 typedef std::vector<ServiceLocation> ServiceLocations;
 
+/**
+ * \class ServiceLocator
+ * \brief A ServiceLocator is a container for ServiceLocations
+ * \details This class serves as a container and provides some convenience functions for updating information from string
+ */
 class ServiceLocator
 {
     ServiceLocations mLocations;
