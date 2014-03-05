@@ -261,7 +261,7 @@ bool Node::accept()
     return success;
 }
 
-void Node::update(bool readAll)
+void Node::update(bool readAllMessages)
 {
     using namespace fipa::acl;
 
@@ -295,7 +295,7 @@ void Node::update(bool readAll)
             }
         }
 
-        if(! (messageFound && readAll) )
+        if(!messageFound || !readAllMessages)
         {
             break;
         }
