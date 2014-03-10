@@ -52,9 +52,14 @@ bool MessageTransport::handleInternalCommunication(const fipa::acl::Letter& lett
         ACLMessage message = letter.getACLMessage();
         if(message.getOntology() == fipa::agent_management::ONTOLOGY)
         {
-            std::string content = message.getContent();
             // handle content
+            std::string content = message.getContent();
+            LOG_DEBUG("Received internal message for agent management: '%s'", content.c_str());
+        } else {
+            std::string content = message.getContent();
+            LOG_DEBUG("Received external message -- content will be ignored: '%s'", content.c_str());
         }
+        return true;
     }
     return false;
 }
