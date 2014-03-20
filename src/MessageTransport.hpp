@@ -17,7 +17,8 @@ namespace services {
 namespace message_transport {
 
 typedef std::string Type;
-typedef boost::function1<bool, const fipa::acl::Letter&> TransportHandler;
+// TransportHandler needs to return the remaining list of agents it could not handle
+typedef boost::function1<fipa::acl::AgentIDList, const fipa::acl::Letter&> TransportHandler;
 typedef std::map<message_transport::Type, TransportHandler> TransportHandlerMap;
 typedef std::vector<message_transport::Type> TransportPriorityList;
 
@@ -33,11 +34,13 @@ typedef std::vector<message_transport::Type> TransportPriorityList;
  class CustomTransport
  {
  public:
-     bool deliverForwardLetter(const fipa::acl::Letter& letter)
+     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter)
      {
          fipa::acl::ACLMessage msg = letter.getACLMessage();
          std::cout << msg.getContent() << std::end;
-         return true;
+
+         // List of agents which could not be delivery to
+         return AgentIDList();
      }
  };
 
@@ -92,8 +95,9 @@ private:
 
     /**
      * Forward a letter to the next relay or final recipient
+     * \return list of agents that could not be delivered to
      */
-    bool forward(const fipa::acl::Letter& msg) const;
+    fipa::acl::AgentIDList forward(fipa::acl::Letter& msg) const;
 
 public:
 

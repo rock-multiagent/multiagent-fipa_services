@@ -6,14 +6,14 @@
 class TestDelivery
 {
 public:
-    bool deliverOrForwardLetterSuccess(const fipa::acl::Letter& letter)
+    fipa::acl::AgentIDList deliverOrForwardLetterSuccess(const fipa::acl::Letter& letter)
     {
-        return true;
+        return fipa::acl::AgentIDList();
     }
 
-    bool deliverOrForwardLetterFail(const fipa::acl::Letter& letter)
+    fipa::acl::AgentIDList deliverOrForwardLetterFail(const fipa::acl::Letter& letter)
     {
-        return false;
+        return letter.flattened().getTo();
     }
 };
 

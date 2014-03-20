@@ -24,7 +24,7 @@ void MessageTransport::handle(fipa::acl::Letter& letter)
     {
         LOG_INFO("Agent '%s' received already stamped message. Conversation id: %s", mAgentId.getName().c_str(), letter.getACLMessage().getConversationID().c_str());
         return;
-    } 
+    }
 
     // Note that the message needs to be updated using a stamp of this message transport service
     stamp(letter);
@@ -33,7 +33,8 @@ void MessageTransport::handle(fipa::acl::Letter& letter)
     if(handleInternalCommunication(letter))
         return;
 
-    if(!forward(letter))
+    fipa::acl::AgentIDList remainingReceivers = forward(letter);
+    if(!remainingReceivers.empty())
     {
         handleError(letter);
     }
@@ -66,13 +67,28 @@ bool MessageTransport::handleInternalCommunication(const fipa::acl::Letter& lett
 
 void MessageTransport::handleError(const fipa::acl::Letter& letter) const
 {
-    fipa::acl::ACLMessage errorMessage = createInternalErrorMessage(letter.getACLMessage(), "Message delivery failed! Delivery path: " + letter.getDeliveryPathString());
+    // Adding all relevant information as inner message (acl message in string encoding)
+    fipa::acl::ACLBaseEnvelope flattenedLetter = letter.flattened();
+    fipa::acl::ACLMessage innerMessage;
+    innerMessage.setSender(flattenedLetter.getFrom());
+    innerMessage.setAllReceivers(flattenedLetter.getIntendedReceivers());
+    innerMessage.setLanguage(fipa::agent_management::INTERNAL_ERROR);
+    innerMessage.setContent("description: message delivery failed\ndelivery path: " + letter.getDeliveryPathString());
+    std::string errorDescription = fipa::acl::MessageGenerator::create(innerMessage, fipa::acl::representation::STRING_REP);
+
+    fipa::acl::ACLMessage errorMessage = createInternalErrorMessage(letter.getACLMessage(), errorDescription);
     fipa::acl::Letter errorLetter(errorMessage, mRepresentation);
     stamp(errorLetter);
-    if(!forward(errorLetter))
+
+    fipa::acl::AgentIDList remainingReceivers = forward(errorLetter);
+    if(!remainingReceivers.empty())
     {
-        // we do not if forwarding of the error fails
-        LOG_WARN("Forwarding of error failed. Conversation id: %s", errorMessage.getConversationID().c_str());
+        fipa::acl::AgentIDList::const_iterator cit = remainingReceivers.begin();
+        for(; cit != remainingReceivers.end(); ++cit)
+        {
+            // we do not if forwarding of the error fails
+            LOG_WARN("Forwarding of error to '%s' failed. Conversation id: %s", cit->getName().c_str(), errorMessage.getConversationID().c_str());
+        }
     }
 }
 
@@ -148,14 +164,15 @@ fipa::acl::ACLMessage MessageTransport::createInternalErrorMessage(const fipa::a
     // Set field to allow identification of internal / fipa_agent_management error
     errorMsg.setPerformative(ACLMessage::FAILURE);
     errorMsg.setOntology(fipa::agent_management::ONTOLOGY);
-    errorMsg.setContent(fipa::agent_management::INTERNAL_ERROR + " " + description);
+    errorMsg.setContent(description);
+
 
     return errorMsg;
 }
 
-bool MessageTransport::forward(const fipa::acl::Letter& letter) const
+fipa::acl::AgentIDList MessageTransport::forward(fipa::acl::Letter& letter) const
 {
-    bool success = false;
+    fipa::acl::AgentIDList remainingReceivers = letter.flattened().getIntendedReceivers();
 
     TransportPriorityList::const_iterator cit = mTransportPriorityList.begin();
     for(; cit != mTransportPriorityList.end(); ++cit)
@@ -164,17 +181,27 @@ bool MessageTransport::forward(const fipa::acl::Letter& letter) const
         if(tit != mTransportHandlerMap.end())
         {
             TransportHandler transportHandler = tit->second;
+            remainingReceivers = transportHandler(letter);
 
-            if( (success = transportHandler(letter)) )
+            if(!remainingReceivers.empty())
             {
-                LOG_DEBUG("Successfully forwarded letter");
-                break;
+                fipa::acl::ACLBaseEnvelope extraEnvelope;
+                extraEnvelope.setIntendedReceivers(remainingReceivers);
+                letter.addExtraEnvelope(extraEnvelope);
             } else {
-                LOG_DEBUG("Failed to forward letter");
+                LOG_DEBUG("Delivered successfully to all agents");
+                break;
             }
         }
     }
-    return success;
+
+    fipa::acl::AgentIDList::const_iterator ait = remainingReceivers.begin();
+    for(; ait != remainingReceivers.end(); ++ait)
+    {
+        LOG_DEBUG("Could not forward letter (with any available transport) to: '%s'", ait->getName().c_str());
+    }
+
+    return remainingReceivers;
 }
 
 } // end namespace message_transport
