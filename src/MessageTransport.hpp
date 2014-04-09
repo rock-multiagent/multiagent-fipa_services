@@ -50,7 +50,7 @@ typedef std::vector<message_transport::Type> TransportPriorityList;
  using fipa::acl::message_transport;
 
  MessageTransport mts("my-mts");
- mts.registerTransport("default-internal-transport", boost::bind(&CustomTransporter::deliverOrForwardLetter, this, _1));
+ mts.registerTransport("default-internal-transport", boost::bind(&CustomTransport::deliverForwardLetter, this, _1));
 
  ...
  // Some letter from somewhere, here just manually constructed

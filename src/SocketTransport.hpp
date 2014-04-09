@@ -2,6 +2,7 @@
 #define FIPA_SERVICE_SOCKET_TRANSPORT_HPP
 
 #include <fipa_acl/fipa_acl.h>
+#include <boost/asio/io_service.hpp>
 
 namespace fipa {
 namespace services {
@@ -16,7 +17,15 @@ public:
     /**
      * Blah.
      */
+    SocketTransport();
+    
+    /**
+     * Blah.
+     */
     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter);
+    
+private:
+    boost::asio::io_service mIo_service;
 };
     
 } // namespace message_transport
