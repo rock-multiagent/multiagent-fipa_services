@@ -37,10 +37,10 @@ typedef std::vector<message_transport::Type> TransportPriorityList;
      fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter)
      {
          fipa::acl::ACLMessage msg = letter.getACLMessage();
-         std::cout << msg.getContent() << std::end;
+         std::cout << msg.getContent() << std::endl;
 
          // List of agents which could not be delivery to
-         return AgentIDList();
+         return fipa::acl::AgentIDList();
      }
  };
 
