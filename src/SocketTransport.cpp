@@ -5,6 +5,7 @@
 #include <vector>
 #include <boost/asio.hpp>
 #include <stdexcept>
+#include <boost/thread.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -12,43 +13,71 @@ namespace fipa {
 namespace services {
 namespace message_transport {
 
-SocketTransport::SocketTransport()
+SocketTransport::SocketTransport(MessageTransport* mts)
+    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 7890)) // FIXME
 {
-    return; // TODO cons must return!
-    try
+    mpMts = mts;
+    boost::thread t(&SocketTransport::startAccept, this);
+}
+
+void SocketTransport::startAccept()
+{
+    while(true)
     {
-        tcp::acceptor acceptor(mIo_service, tcp::endpoint(tcp::v4(), 7890)); // FIXME
-        while(true)
+        try
         {
             tcp::socket socket(mIo_service);
-            acceptor.accept(socket);
+            mAcceptor.accept(socket);
 
-            // Read message
-            boost::asio::streambuf responseBuf;
-            boost::asio::read_until(socket, responseBuf, "\n"); // This does not work
-            // TODO handle EOF
+            // Read message (EOF delimited)
+            boost::asio::streambuf messageBuf;
+            boost::system::error_code  ec;
+            boost::asio::read_until(socket, messageBuf, EOF, ec);
+            if(ec && ec != boost::asio::error::eof)
+            {
+                std::cout << "Erroer islands."  << std::endl;
+                throw std::runtime_error("Some error reading from socket: " + ec.message());
+            }
 
-            boost::asio::streambuf::const_buffers_type bufs = responseBuf.data();
-            std::string response(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + responseBuf.size());
+            boost::asio::streambuf::const_buffers_type bufs = messageBuf.data();
+            std::string messageString(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + messageBuf.size());
 
-            std::cout << "GOT: " << response << std::endl;
+            std::cout << "GOT: " << messageString << std::endl;
 
+            // Deserialize message
+            fipa::acl::ACLMessage message;
+            //
+            message.setSender(fipa::acl::AgentID("da0"));
+            message.addReceiver(fipa::acl::AgentID("rock_agent"));
+            message.setContent("This is the content.");
+            //
+            if(true)//fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
+            {
+                // success
+                std::cout << "GOT again: " << message.toString() << std::endl;
+
+                // Forward message with the MessageTransport
+                fipa::acl::Letter letter (message, fipa::acl::representation::BITEFFICIENT);
+                mpMts->handle(letter);
+            }
+            else
+            {
+                // FIXME ATM always parse errors with Jade messages
+                std::cout << "parse error" << std::endl;
+                throw std::runtime_error("Could not parse the sent message.");
+            }
         }
-    }
-    catch(std::exception& e)
-    {
-
+        catch(std::exception & e)
+        {
+            LOG_WARN("Error forwarding message: %s", e.what());
+        }
     }
 }
 
 
 fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Letter& letter)
 {
-    // TODO only forward to JADE agents??
-
     fipa::acl::ACLMessage msg = letter.getACLMessage();
-
-    std::cout << "Sending: " << msg.toString() << std::endl;
 
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
@@ -75,11 +104,11 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
     catch (std::exception& e)
     {
         std::cout << e.what() << std::endl;
-        LOG_WARN("Could not connect socket: %s",e.what()); // TODO where does this go? It's not printed...
+        LOG_WARN("Could not connect socket: %s", e.what()); // TODO where does this go? It's not printed...
     }
 
     // List of agents which could not be delivered to
-    return fipa::acl::AgentIDList();
+    return fipa::acl::AgentIDList(); // TODO not acurrate, but how do we determine that?
 }
 
 } // end namespace message_transport
