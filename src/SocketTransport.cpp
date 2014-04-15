@@ -14,10 +14,19 @@ namespace services {
 namespace message_transport {
 
 SocketTransport::SocketTransport(MessageTransport* mts)
-    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 7890)) // FIXME
+    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 0)) // FIXME
 {
     mpMts = mts;
     boost::thread t(&SocketTransport::startAccept, this);
+    
+    // TODO ServiceLocator: publish proxy in avahi, with socket address and port
+}
+
+
+// TODO full getAddress
+int SocketTransport::getPort()
+{
+    return mAcceptor.local_endpoint().port();
 }
 
 void SocketTransport::startAccept()
@@ -35,7 +44,6 @@ void SocketTransport::startAccept()
             boost::asio::read_until(socket, messageBuf, EOF, ec);
             if(ec && ec != boost::asio::error::eof)
             {
-                std::cout << "Erroer islands."  << std::endl;
                 throw std::runtime_error("Some error reading from socket: " + ec.message());
             }
 
@@ -75,13 +83,15 @@ void SocketTransport::startAccept()
 }
 
 
-fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Letter& letter)
+fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Letter& letter) // TODO param ServiceLocator (oder mDistributedServiceDirectory im Konstruktor)
 {
     fipa::acl::ACLMessage msg = letter.getACLMessage();
+    
+    //letter.flattened().getIntendedReceivers()
 
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
-        boost::asio::ip::address::from_string("127.0.0.1"), 6789); // FIXME must the IP be configurable?
+        boost::asio::ip::address::from_string("127.0.0.1"), 6789); // FIXME must the IP be configurable? avahi
     boost::system::error_code ec;
 
     try
@@ -104,7 +114,7 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
     catch (std::exception& e)
     {
         std::cout << e.what() << std::endl;
-        LOG_WARN("Could not connect socket: %s", e.what()); // TODO where does this go? It's not printed...
+        LOG_WARN("Could not connect socket: %s", e.what()); // TODO where does this go? It's not printed... export BASE_LOG_LEVEL=DEBUG/IMFO/WARN/ERROR
     }
 
     // List of agents which could not be delivered to

@@ -12,20 +12,23 @@ namespace services {
 namespace message_transport {
     
 /**
- * Blah.
+ * This transport implementation forwards messages via sockets to JADE (or something else). It also receives messages on a socket and forwards them
+ * in the other direction, to ROCK agents.
  */
 class SocketTransport
 {
 public:
     /**
-     * Blah.
+     * Blah. TODO comment and params
      */
     SocketTransport(MessageTransport* mts);
     
     /**
-     * Blah.
+     * This method is called once a letter arrived and needs to be forwarded.
      */
     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter);
+    
+    int getPort();
     
 private:
     MessageTransport* mpMts;
