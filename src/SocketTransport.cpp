@@ -6,6 +6,7 @@
 #include <boost/asio.hpp>
 #include <stdexcept>
 #include <boost/thread.hpp>
+#include <boost/foreach.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -13,15 +14,13 @@ namespace fipa {
 namespace services {
 namespace message_transport {
 
-SocketTransport::SocketTransport(MessageTransport* mts)
-    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 0)) // FIXME
+SocketTransport::SocketTransport(fipa::services::message_transport::MessageTransport* mts, fipa::services::DistributedServiceDirectory* dsd)
+    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 0))
+    , mpMts(mts)
+    , mpDSD(dsd)
 {
-    mpMts = mts;
     boost::thread t(&SocketTransport::startAccept, this);
-    
-    // TODO ServiceLocator: publish proxy in avahi, with socket address and port
 }
-
 
 // TODO full getAddress
 int SocketTransport::getPort()
@@ -82,44 +81,99 @@ void SocketTransport::startAccept()
     }
 }
 
-
-fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Letter& letter) // TODO param ServiceLocator (oder mDistributedServiceDirectory im Konstruktor)
+fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Letter& letter)
 {
-    fipa::acl::ACLMessage msg = letter.getACLMessage();
+    fipa::acl::AgentIDList intendedReceivers = letter.flattened().getIntendedReceivers();
+    fipa::acl::AgentIDList remainingReceivers;
     
-    //letter.flattened().getIntendedReceivers()
-
-    tcp::socket socket(mIo_service);
-    boost::asio::ip::tcp::endpoint endpoint(
-        boost::asio::ip::address::from_string("127.0.0.1"), 6789); // FIXME must the IP be configurable? avahi
-    boost::system::error_code ec;
-
-    try
+    // TODO connection (caching) management: When sending messages instead of envelopes
+    // and not saving where it was sent successfully, messages may be delivered duplicate.
+    // TODO when sending letters:
+    // fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(intendedReceiverName) );
+    
+    // Loop through all intended receivers
+    BOOST_FOREACH(fipa::acl::AgentID id, intendedReceivers)
     {
-        socket.connect(endpoint, ec);
-        if (ec)
-        {
-            // An error occurred.
-            throw boost::system::system_error(ec);
+        fipa::services::ServiceDirectoryList list = mpDSD->search(id.getName(), fipa::services::ServiceDirectoryEntry::NAME, false);
+        if(list.empty()) {
+            LOG_WARN("Receiver unknown: %s", id.getName().c_str());
+        } else if(list.size() > 1) {
+            LOG_WARN("Ambiguous receiver : %s", id.getName().c_str());
+        } else {
+            using namespace fipa::services;
+            // Extract the service location
+            ServiceDirectoryEntry serviceEntry = list.front();
+            ServiceLocator locator = serviceEntry.getLocator();
+            // Check all locations
+            ServiceLocations locations = locator.getLocations();
+            
+            BOOST_FOREACH(ServiceLocation location, locations)
+            {
+                // TODO Explicitly check for this?
+                if(location.getSignatureType() != "JadeProxyAgent")
+                {
+                    continue;
+                }
+                // Now, we have a tcp locator to connect to                          
+                try 
+                {
+                    connectAndSend(letter, location.getServiceAddress());
+                    // It worked, we do not need to try further locations
+                    break;
+                }
+                catch(std::exception& e) 
+                {
+                    std::cout << e.what() << std::endl;
+                    LOG_WARN("Could not connect socket: %s", e.what());
+                    // export BASE_LOG_LEVEL=DEBUG/INFO/WARN/ERROR
+                }
+            }
         }
-
-        boost::asio::write(socket, boost::asio::buffer(msg.toString()),
-                           boost::asio::transfer_all(), ec);
-        if (ec)
-        {
-            // An error occurred.
-            throw boost::system::system_error(ec);
-        }
-    }
-    catch (std::exception& e)
-    {
-        std::cout << e.what() << std::endl;
-        LOG_WARN("Could not connect socket: %s", e.what()); // TODO where does this go? It's not printed... export BASE_LOG_LEVEL=DEBUG/IMFO/WARN/ERROR
     }
 
     // List of agents which could not be delivered to
-    return fipa::acl::AgentIDList(); // TODO not acurrate, but how do we determine that?
+    return remainingReceivers;
 }
+
+void SocketTransport::connectAndSend(const acl::Letter& letter, std::string addressString)
+{
+    // TODO tcp address extraction and udt::Address::fromString nearly identical
+    std::string address;
+    uint16_t port;
+    
+    // address is in the format "tcp://Ip:Port
+    boost::regex r("tcp://([^:]*):([0-9]{1,5})");
+    boost::smatch what;
+    if(boost::regex_match( addressString ,what,r))
+    {
+        address = std::string(what[1].first, what[1].second);
+        port = atoi( std::string(what[2].first, what[2].second).c_str() );
+    } else {
+        throw std::runtime_error("address '" + addressString + "' malformatted");
+    }
+    
+    tcp::socket socket(mIo_service);
+    boost::asio::ip::tcp::endpoint endpoint(
+        boost::asio::ip::address::from_string(address), port);
+    boost::system::error_code ec;
+    
+    socket.connect(endpoint, ec);
+    if (ec)
+    {
+        // An error occurred.
+        throw boost::system::system_error(ec);
+    }
+    fipa::acl::ACLMessage msg = letter.getACLMessage();
+
+    boost::asio::write(socket, boost::asio::buffer(msg.toString()),
+                        boost::asio::transfer_all(), ec);
+    if (ec)
+    {
+        // An error occurred.
+        throw boost::system::system_error(ec);
+    }
+}
+
 
 } // end namespace message_transport
 } // end namespace services

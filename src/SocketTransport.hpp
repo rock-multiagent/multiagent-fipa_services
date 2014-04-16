@@ -2,8 +2,9 @@
 #define FIPA_SERVICE_SOCKET_TRANSPORT_HPP
 
 #include "MessageTransport.hpp"
-
+#include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_acl/fipa_acl.h>
+
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
@@ -19,9 +20,10 @@ class SocketTransport
 {
 public:
     /**
-     * Blah. TODO comment and params
+     * The constructor needs pointers the the main message transport and to the DistributedServiceDirectory,
+     * to locate JADE agents.
      */
-    SocketTransport(MessageTransport* mts);
+    SocketTransport(MessageTransport* mts, DistributedServiceDirectory* dsd);
     
     /**
      * This method is called once a letter arrived and needs to be forwarded.
@@ -32,10 +34,18 @@ public:
     
 private:
     MessageTransport* mpMts;
+    DistributedServiceDirectory* mpDSD;
     
     boost::asio::io_service mIo_service;
     boost::asio::ip::tcp::acceptor mAcceptor;
     void startAccept();
+    
+    /**
+     * Tries to connect to the socket with the given address in format
+     * "tcp://IP:Port" and send the given letter. Throws an exception on
+     * failure.
+     */
+    void connectAndSend(const fipa::acl::Letter& letter, std::string addressString);
 };
     
 } // namespace message_transport

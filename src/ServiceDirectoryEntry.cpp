@@ -75,7 +75,7 @@ std::string ServiceDirectoryEntry::toString() const
     txt += "ServiceDirectoryEntry: " + getName() + "\n";
     txt += "    type: " + getType() + "\n";
     txt += "    locator: " + getLocator().toString() + "\n";
-    txt += "    description: " + getLocator().toString() + "\n";
+    txt += "    description: " + getDescription() + "\n";
 
     return txt;
 }
