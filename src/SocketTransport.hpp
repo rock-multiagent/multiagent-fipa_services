@@ -45,7 +45,7 @@ private:
      * "tcp://IP:Port" and send the given letter. Throws an exception on
      * failure.
      */
-    void connectAndSend(const fipa::acl::Letter& letter, std::string addressString);
+    void connectAndSend(const fipa::acl::Letter& letter, const std::string& addressString);
 };
     
 } // namespace message_transport

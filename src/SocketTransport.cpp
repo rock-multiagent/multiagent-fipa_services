@@ -1,5 +1,8 @@
 #include "SocketTransport.hpp"
 
+#include <fipa_acl/message_parser/envelope_parser.h>
+#include <fipa_acl/message_generator/envelope_generator.h>
+
 #include <base/Logging.hpp>
 #include <iostream>
 #include <vector>
@@ -58,20 +61,32 @@ void SocketTransport::startAccept()
             message.addReceiver(fipa::acl::AgentID("rock_agent"));
             message.setContent("This is the content.");
             //
-            if(true)//fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
+            
+            fipa::acl::Letter envelope;
+            
+            if(fipa::acl::EnvelopeParser::parseData(messageString, envelope, fipa::acl::representation::XML))
             {
                 // success
-                std::cout << "GOT again: " << message.toString() << std::endl;
-
-                // Forward message with the MessageTransport
-                fipa::acl::Letter letter (message, fipa::acl::representation::BITEFFICIENT);
-                mpMts->handle(letter);
+                std::cout << "success!" << std::endl;
+                mpMts->handle(envelope);
             }
             else
             {
-                // FIXME ATM always parse errors with Jade messages
-                std::cout << "parse error" << std::endl;
-                throw std::runtime_error("Could not parse the sent message.");
+                if(true)//fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
+                {
+                    // success
+                    std::cout << "GOT again: " << message.toString() << std::endl;
+
+                    // Forward message with the MessageTransport
+                    fipa::acl::Letter letter (message, fipa::acl::representation::BITEFFICIENT);
+                    mpMts->handle(letter);
+                }
+                else
+                {
+                    // FIXME ATM always parse errors with Jade messages
+                    std::cout << "parse error" << std::endl;
+                    throw std::runtime_error("Could not parse the sent message.");
+                }
             }
         }
         catch(std::exception & e)
@@ -117,7 +132,8 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
                 // Now, we have a tcp locator to connect to                          
                 try 
                 {
-                    connectAndSend(letter, location.getServiceAddress());
+                    fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(id.getName()) );
+                    connectAndSend(updatedLetter, location.getServiceAddress());
                     // It worked, we do not need to try further locations
                     break;
                 }
@@ -135,7 +151,7 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
     return remainingReceivers;
 }
 
-void SocketTransport::connectAndSend(const acl::Letter& letter, std::string addressString)
+void SocketTransport::connectAndSend(const acl::Letter& letter, const std::string& addressString)
 {
     // TODO tcp address extraction and udt::Address::fromString nearly identical
     std::string address;
@@ -164,6 +180,9 @@ void SocketTransport::connectAndSend(const acl::Letter& letter, std::string addr
         throw boost::system::system_error(ec);
     }
     fipa::acl::ACLMessage msg = letter.getACLMessage();
+    
+    std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::BITEFFICIENT);
+    std::cout << "could write : " << envStr << std::endl;
 
     boost::asio::write(socket, boost::asio::buffer(msg.toString()),
                         boost::asio::transfer_all(), ec);
