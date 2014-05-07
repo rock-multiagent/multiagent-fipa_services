@@ -2,6 +2,7 @@
 
 #include <fipa_acl/message_parser/envelope_parser.h>
 #include <fipa_acl/message_generator/envelope_generator.h>
+#include <fipa_acl/message_generator/message_generator.h>
 
 #include <base/Logging.hpp>
 #include <iostream>
@@ -57,9 +58,9 @@ void SocketTransport::startAccept()
             // Deserialize message
             fipa::acl::ACLMessage message;
             //
-            message.setSender(fipa::acl::AgentID("da0"));
-            message.addReceiver(fipa::acl::AgentID("rock_agent"));
-            message.setContent("This is the content.");
+            //message.setSender(fipa::acl::AgentID("da0"));
+            //message.addReceiver(fipa::acl::AgentID("rock_agent"));
+            //message.setContent("This is the content.");
             //
             
             fipa::acl::Letter envelope;
@@ -72,7 +73,7 @@ void SocketTransport::startAccept()
             }
             else
             {
-                if(true)//fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
+                if(fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
                 {
                     // success
                     std::cout << "GOT again: " << message.toString() << std::endl;
@@ -168,6 +169,9 @@ void SocketTransport::connectAndSend(const acl::Letter& letter, const std::strin
         throw std::runtime_error("address '" + addressString + "' malformatted");
     }
     
+    // TODO Modify msg and env:
+    // payload-length, payload-encoding, sender addresses
+    
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
         boost::asio::ip::address::from_string(address), port);
@@ -181,10 +185,13 @@ void SocketTransport::connectAndSend(const acl::Letter& letter, const std::strin
     }
     fipa::acl::ACLMessage msg = letter.getACLMessage();
     
-    std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::BITEFFICIENT);
-    std::cout << "could write : " << envStr << std::endl;
-
-    boost::asio::write(socket, boost::asio::buffer(msg.toString()),
+    std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::XML);
+    std::cout << "Env XML: " << envStr << std::endl;
+    
+    std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
+    std::cout << "Msg Str: " << msgStr << std::endl;
+    
+    boost::asio::write(socket, boost::asio::buffer(msgStr),
                         boost::asio::transfer_all(), ec);
     if (ec)
     {
