@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <boost/thread.hpp>
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -52,23 +53,21 @@ void SocketTransport::startAccept()
 
             boost::asio::streambuf::const_buffers_type bufs = messageBuf.data();
             std::string messageString(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + messageBuf.size());
+            
+            // cut leading and trailing whitespace, as this could be incompatible with payload_length
+            boost::algorithm::trim(messageString);
 
             std::cout << "GOT: " << messageString << std::endl;
 
             // Deserialize message
             fipa::acl::ACLMessage message;
-            //
-            //message.setSender(fipa::acl::AgentID("da0"));
-            //message.addReceiver(fipa::acl::AgentID("rock_agent"));
-            //message.setContent("This is the content.");
-            //
-            
             fipa::acl::Letter envelope;
             
             if(fipa::acl::EnvelopeParser::parseData(messageString, envelope, fipa::acl::representation::XML))
             {
                 // success
                 std::cout << "success!" << std::endl;
+                std::cout << "The payload is:" << std::endl << envelope.getPayload() << std::endl;
                 mpMts->handle(envelope);
             }
             else
@@ -104,8 +103,6 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
     
     // TODO connection (caching) management: When sending messages instead of envelopes
     // and not saving where it was sent successfully, messages may be delivered duplicate.
-    // TODO when sending letters:
-    // fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(intendedReceiverName) );
     
     // Loop through all intended receivers
     BOOST_FOREACH(fipa::acl::AgentID id, intendedReceivers)
@@ -142,7 +139,6 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
                 {
                     std::cout << e.what() << std::endl;
                     LOG_WARN("Could not connect socket: %s", e.what());
-                    // export BASE_LOG_LEVEL=DEBUG/INFO/WARN/ERROR
                 }
             }
         }
@@ -152,7 +148,7 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
     return remainingReceivers;
 }
 
-void SocketTransport::connectAndSend(const acl::Letter& letter, const std::string& addressString)
+void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& addressString)
 {
     // TODO tcp address extraction and udt::Address::fromString nearly identical
     std::string address;
@@ -170,7 +166,7 @@ void SocketTransport::connectAndSend(const acl::Letter& letter, const std::strin
     }
     
     // TODO Modify msg and env:
-    // payload-length, payload-encoding, sender addresses
+    // sender addresses
     
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
@@ -183,15 +179,25 @@ void SocketTransport::connectAndSend(const acl::Letter& letter, const std::strin
         // An error occurred.
         throw boost::system::system_error(ec);
     }
+    
+    
     fipa::acl::ACLMessage msg = letter.getACLMessage();
+    std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
+    std::cout << "Msg Str: " << msgStr << std::endl;
+    
+    // Altering encoding to string
+    fipa::acl::ACLBaseEnvelope extraEnvelope;
+    extraEnvelope.setACLRepresentation(fipa::acl::representation::STRING_REP);
+    extraEnvelope.setPayloadLength(msgStr.length());
+    letter.addExtraEnvelope(extraEnvelope);
+    
+    // Modify the payload
+    letter.setPayload(msgStr);
     
     std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::XML);
     std::cout << "Env XML: " << envStr << std::endl;
     
-    std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
-    std::cout << "Msg Str: " << msgStr << std::endl;
-    
-    boost::asio::write(socket, boost::asio::buffer(msgStr),
+    boost::asio::write(socket, boost::asio::buffer(envStr),
                         boost::asio::transfer_all(), ec);
     if (ec)
     {
