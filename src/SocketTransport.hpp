@@ -30,7 +30,7 @@ public:
      */
     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter);
     
-    int getPort();
+    std::string getAddress(const std::string& interfaceName = "eth0");
     
 private:
     MessageTransport* mpMts;
@@ -38,6 +38,12 @@ private:
     
     boost::asio::io_service mIo_service;
     boost::asio::ip::tcp::acceptor mAcceptor;
+    boost::asio::ip::tcp::socket mSocket;
+    
+    // Address and Port
+    std::string getIP(const std::string& interfaceName = "eth0");
+    int getPort();
+    
     void startAccept();
     
     /**

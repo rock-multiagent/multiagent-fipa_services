@@ -12,6 +12,8 @@
 #include <boost/thread.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+#include <ifaddrs.h>
 
 using boost::asio::ip::tcp;
 
@@ -23,11 +25,48 @@ SocketTransport::SocketTransport(fipa::services::message_transport::MessageTrans
     : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 0))
     , mpMts(mts)
     , mpDSD(dsd)
+    , mSocket(mIo_service)
 {
+    mAcceptor.listen();
     boost::thread t(&SocketTransport::startAccept, this);
 }
 
-// TODO full getAddress
+std::string SocketTransport::getAddress(const std::string& interfaceName)
+{
+    return "tcp://" + getIP(interfaceName) + ":" + boost::lexical_cast<std::string>(getPort());
+}
+
+// TODO UDTTransport Address Node::getAddress is identical. Merge!
+std::string SocketTransport::getIP(const std::string& interfaceName)
+{
+    struct ifaddrs* interfaces;
+
+    if(0 == getifaddrs(&interfaces))
+    {
+        struct ifaddrs* interface;
+        for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
+        {
+            if(interface->ifa_addr->sa_family == AF_INET)
+            {
+                // Match
+                if(interfaceName == std::string(interface->ifa_name))
+                {
+                    struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
+                    char* addr = inet_ntoa(sa->sin_addr);
+                    std::string ip = std::string(addr);
+
+                    freeifaddrs(interfaces);
+
+                    return ip;
+                }
+            }
+        }
+    }
+
+    freeifaddrs(interfaces);
+    throw std::runtime_error("fipa::services::udt::Node: could not get interface address of '" + interfaceName + "'");
+}
+
 int SocketTransport::getPort()
 {
     return mAcceptor.local_endpoint().port();
@@ -39,13 +78,13 @@ void SocketTransport::startAccept()
     {
         try
         {
-            tcp::socket socket(mIo_service);
-            mAcceptor.accept(socket);
+            //tcp::socket socket(mIo_service);
+            mAcceptor.accept(mSocket);
 
             // Read message (EOF delimited)
             boost::asio::streambuf messageBuf;
             boost::system::error_code  ec;
-            boost::asio::read_until(socket, messageBuf, EOF, ec);
+            boost::asio::read_until(mSocket, messageBuf, EOF, ec);
             if(ec && ec != boost::asio::error::eof)
             {
                 throw std::runtime_error("Some error reading from socket: " + ec.message());
@@ -157,16 +196,13 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     // address is in the format "tcp://Ip:Port
     boost::regex r("tcp://([^:]*):([0-9]{1,5})");
     boost::smatch what;
-    if(boost::regex_match( addressString ,what,r))
+    if(boost::regex_match(addressString, what, r))
     {
         address = std::string(what[1].first, what[1].second);
         port = atoi( std::string(what[2].first, what[2].second).c_str() );
     } else {
         throw std::runtime_error("address '" + addressString + "' malformatted");
     }
-    
-    // TODO Modify msg and env:
-    // sender addresses
     
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
@@ -185,12 +221,17 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
     std::cout << "Msg Str: " << msgStr << std::endl;
     
+    // Extra envelope
     // Altering encoding to string
     fipa::acl::ACLBaseEnvelope extraEnvelope;
     extraEnvelope.setACLRepresentation(fipa::acl::representation::STRING_REP);
     extraEnvelope.setPayloadLength(msgStr.length());
-    letter.addExtraEnvelope(extraEnvelope);
+    // Add sender tcp address
+    fipa::acl::AgentID sender = msg.getSender();
+    sender.addAddress(getAddress());
+    extraEnvelope.setFrom(sender);
     
+    letter.addExtraEnvelope(extraEnvelope);
     // Modify the payload
     letter.setPayload(msgStr);
     
