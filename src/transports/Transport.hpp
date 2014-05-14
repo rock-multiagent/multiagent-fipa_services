@@ -5,20 +5,14 @@
 #include <stdint.h>
 #include <fipa_acl/fipa_acl.h>
 #include <fipa_services/DistributedServiceDirectory.hpp>
-//#include <fipa_services/transports/udt/UDTTransport.hpp>
 #include <fipa_services/ServiceLocator.hpp>
 
+namespace fipa {
+namespace services {
 // Forward declaration
-namespace fipa {
-namespace services {
-    namespace udt {
-        class OutgoingConnection;
-    }
-} // namespace service
-} // namespace fipa
-
-namespace fipa {
-namespace services {
+namespace udt {
+    class OutgoingConnection;
+}
     
 /**
  * \class Address
@@ -87,7 +81,7 @@ public:
 class Transport
 {
 public:
-    Transport(const std::string& name, DistributedServiceDirectory* dsd, fipa::services::ServiceLocation* serviceLocation);
+    Transport(const std::string& name, DistributedServiceDirectory* dsd, const fipa::services::ServiceLocation& serviceLocation);
     
     /**
      * Get local IPv4 address for a given interface
@@ -106,14 +100,13 @@ public:
     // The name of the MessageTransportTask using this.
     std::string getName() {return name; };
     
-    fipa::services::ServiceLocation* getServiceLocationP() { return mServiceLocation; };
+    fipa::services::ServiceLocation getServiceLocation() { return mServiceLocation; };
     
 private:
-    // TODO don't use pointers where possible
     std::string name;
     DistributedServiceDirectory* mpDSD;
     std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
-    fipa::services::ServiceLocation* mServiceLocation;
+    fipa::services::ServiceLocation mServiceLocation;
 };
 
 } // end namespace services

@@ -11,7 +11,7 @@
 
 namespace fipa {
 namespace services {
-namespace message_transport {
+namespace tcp {
     
 /**
  * This transport implementation forwards messages via sockets to JADE (or something else). It also receives messages on a socket and forwards them
@@ -24,7 +24,7 @@ public:
      * The constructor needs pointers the the main message transport and to the DistributedServiceDirectory,
      * to locate JADE agents.
      */
-    SocketTransport(MessageTransport* mts, DistributedServiceDirectory* dsd);
+    SocketTransport(fipa::services::message_transport::MessageTransport* mts, DistributedServiceDirectory* dsd);
     
     /**
      * This method is called once a letter arrived and needs to be forwarded.
@@ -34,7 +34,7 @@ public:
     fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
     
 private:
-    MessageTransport* mpMts;
+    fipa::services::message_transport::MessageTransport* mpMts;
     DistributedServiceDirectory* mpDSD;
     
     boost::asio::io_service mIo_service;
@@ -54,7 +54,7 @@ private:
     void connectAndSend(fipa::acl::Letter& letter, const std::string& addressString);
 };
     
-} // namespace message_transport
+} // namespace tcp
 } // namespace services
 } // namespace fipa
 

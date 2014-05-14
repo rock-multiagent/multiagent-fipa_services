@@ -14,15 +14,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-using boost::asio::ip::tcp;
 
-//FIXME namespace should be fipa::services::tcp
 namespace fipa {
 namespace services {
-namespace message_transport {
+namespace tcp {
 
 SocketTransport::SocketTransport(fipa::services::message_transport::MessageTransport* mts, fipa::services::DistributedServiceDirectory* dsd)
-    : mAcceptor(mIo_service, tcp::endpoint(tcp::v4(), 0))
+    : mAcceptor(mIo_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 0))
     , mpMts(mts)
     , mpDSD(dsd)
     , mSocket(mIo_service)
@@ -144,7 +142,7 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     std::string ip = address.ip;
     uint16_t port = address.port;
     
-    tcp::socket socket(mIo_service);
+    boost::asio::ip::tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
         boost::asio::ip::address::from_string(ip), port);
     boost::system::error_code ec;
@@ -188,6 +186,6 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
 }
 
 
-} // end namespace message_transport
+} // end namespace tcp
 } // end namespace services
 } // end namespace fipa
