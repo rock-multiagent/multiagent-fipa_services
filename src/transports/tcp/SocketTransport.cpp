@@ -16,6 +16,7 @@
 
 using boost::asio::ip::tcp;
 
+//FIXME namespace should be fipa::services::tcp
 namespace fipa {
 namespace services {
 namespace message_transport {

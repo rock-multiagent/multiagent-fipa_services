@@ -3,6 +3,19 @@
 
 #include <string>
 #include <stdint.h>
+#include <fipa_acl/fipa_acl.h>
+#include <fipa_services/DistributedServiceDirectory.hpp>
+//#include <fipa_services/transports/udt/UDTTransport.hpp>
+#include <fipa_services/ServiceLocator.hpp>
+
+// Forward declaration
+namespace fipa {
+namespace services {
+    namespace udt {
+        class OutgoingConnection;
+    }
+} // namespace service
+} // namespace fipa
 
 namespace fipa {
 namespace services {
@@ -68,17 +81,39 @@ public:
 
 /**
  * \class Transport
- * \brief Static method collection facilitating transport implementations.
+ * \brief Connection management base class.
+ * Also static method collection facilitating transport implementations.
  */
 class Transport
 {
 public:
+    Transport(const std::string& name, DistributedServiceDirectory* dsd, fipa::services::ServiceLocation* serviceLocation);
+    
     /**
      * Get local IPv4 address for a given interface
      * \param interfaceName name of the interface, default is eth0
      * \return address as a string
      */
     static std::string getLocalIPv4Address(const std::string& interfaceName = "eth0");
+    
+    /**
+     * Forwards a letter via UDT.
+     * \param letter enenvelope
+     * \return list of agents for which the delivery failed
+     */
+    fipa::acl::AgentIDList deliverOrForwardLetterViaUDT(const fipa::acl::Letter& letter);
+    
+    // The name of the MessageTransportTask using this.
+    std::string getName() {return name; };
+    
+    fipa::services::ServiceLocation* getServiceLocationP() { return mServiceLocation; };
+    
+private:
+    // TODO don't use pointers where possible
+    std::string name;
+    DistributedServiceDirectory* mpDSD;
+    std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
+    fipa::services::ServiceLocation* mServiceLocation;
 };
 
 } // end namespace services

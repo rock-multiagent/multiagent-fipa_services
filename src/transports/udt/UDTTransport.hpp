@@ -24,7 +24,7 @@ extern const uint32_t MAX_MESSAGE_SIZE_BYTES;
  * \class OutgoingConnection
  * \brief A unidirectional, outgoing udt connection that allows to send fipa letter to a receiver
  */
-class OutgoingConnection : public Connection
+class OutgoingConnection : public fipa::services::Connection
 {
     UDTSOCKET mSocket;
 
@@ -33,7 +33,7 @@ public:
 
     OutgoingConnection(const std::string& ipaddress, uint16_t port);
 
-    OutgoingConnection(const Address& address);
+    OutgoingConnection(const fipa::services::Address& address);
 
     ~OutgoingConnection();
 
@@ -49,7 +49,7 @@ public:
      * Connect to a given address
      * \param address Connection address
      */
-    void connect(const Address& address) { connect(address.ip, address.port); }
+    void connect(const fipa::services::Address& address) { connect(address.ip, address.port); }
 
     /**
      * Send message
@@ -72,7 +72,7 @@ public:
  * \class IncomingConnection
  * \brief A unidirectional, incoming connection to receive incoming messages
  */
-class IncomingConnection : public Connection
+class IncomingConnection : public fipa::services::Connection
 {
     UDTSOCKET mSocket;
 
@@ -154,7 +154,7 @@ typedef std::vector<IncomingConnectionPtr> IncomingConnections;
  connection.sendLetter(letter);
  \endverbatim
  */
-class Node : public Connection
+class Node : public fipa::services::Connection
 {
     UDTSOCKET mServerSocket;
     IncomingConnections mClients;
@@ -206,7 +206,7 @@ public:
      * \param interfaceName name of the interface, default is eth0
      * \return address of the node
      */
-    Address getAddress(const std::string& interfaceName = "eth0");
+    fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
 
 };
 
