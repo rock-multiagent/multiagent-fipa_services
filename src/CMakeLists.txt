@@ -7,7 +7,7 @@ rock_library(fipa_services
         ServiceDirectory.cpp
         ServiceDirectoryEntry.cpp
         ServiceLocator.cpp
-        SocketTransport.cpp
+        transports/tcp/SocketTransport.cpp
         transports/udt/UDTTransport.cpp
     HEADERS 
         DistributedServiceDirectory.hpp
@@ -17,7 +17,7 @@ rock_library(fipa_services
         ServiceDirectoryEntry.hpp
         ServiceDirectory.hpp
         ServiceLocator.hpp
-        SocketTransport.hpp
+        transports/tcp/SocketTransport.hpp
         transports/udt/UDTTransport.hpp
     LIBS ${Boost_REGEX_LIBRARIES} ${Boost_THREAD_LIBRARIES} ${Boost_SYSTEM_LIBRARIES} udt
     DEPS_PKGCONFIG base-lib fipa_acl service_discovery

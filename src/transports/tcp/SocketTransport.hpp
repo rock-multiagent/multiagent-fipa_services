@@ -1,7 +1,7 @@
 #ifndef FIPA_SERVICE_SOCKET_TRANSPORT_HPP
 #define FIPA_SERVICE_SOCKET_TRANSPORT_HPP
 
-#include "MessageTransport.hpp"
+#include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_acl/fipa_acl.h>
 
