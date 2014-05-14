@@ -4,6 +4,7 @@
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_acl/fipa_acl.h>
+#include <fipa_services/transports/Transport.hpp>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -30,7 +31,7 @@ public:
      */
     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter);
     
-    std::string getAddress(const std::string& interfaceName = "eth0");
+    fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
     
 private:
     MessageTransport* mpMts;
@@ -41,7 +42,6 @@ private:
     boost::asio::ip::tcp::socket mSocket;
     
     // Address and Port
-    std::string getIP(const std::string& interfaceName = "eth0");
     int getPort();
     
     void startAccept();

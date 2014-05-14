@@ -6,6 +6,7 @@
 BOOST_AUTO_TEST_CASE(udt_transport_test)
 {
     using namespace fipa::acl;
+    using namespace fipa::services;
     using namespace fipa::services::udt;
 
     Node node;

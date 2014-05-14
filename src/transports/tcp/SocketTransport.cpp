@@ -13,7 +13,6 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include <ifaddrs.h>
 
 using boost::asio::ip::tcp;
 
@@ -31,40 +30,9 @@ SocketTransport::SocketTransport(fipa::services::message_transport::MessageTrans
     boost::thread t(&SocketTransport::startAccept, this);
 }
 
-std::string SocketTransport::getAddress(const std::string& interfaceName)
+Address SocketTransport::getAddress(const std::string& interfaceName)
 {
-    return "tcp://" + getIP(interfaceName) + ":" + boost::lexical_cast<std::string>(getPort());
-}
-
-// TODO UDTTransport Address Node::getAddress is identical. Merge!
-std::string SocketTransport::getIP(const std::string& interfaceName)
-{
-    struct ifaddrs* interfaces;
-
-    if(0 == getifaddrs(&interfaces))
-    {
-        struct ifaddrs* interface;
-        for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
-        {
-            if(interface->ifa_addr->sa_family == AF_INET)
-            {
-                // Match
-                if(interfaceName == std::string(interface->ifa_name))
-                {
-                    struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
-                    char* addr = inet_ntoa(sa->sin_addr);
-                    std::string ip = std::string(addr);
-
-                    freeifaddrs(interfaces);
-
-                    return ip;
-                }
-            }
-        }
-    }
-
-    freeifaddrs(interfaces);
-    throw std::runtime_error("fipa::services::udt::Node: could not get interface address of '" + interfaceName + "'");
+    return Address(Transport::getLocalIPv4Address(), getPort(), "tcp");
 }
 
 int SocketTransport::getPort()
@@ -98,8 +66,7 @@ void SocketTransport::startAccept()
 
             std::cout << "GOT: " << messageString << std::endl;
 
-            // Deserialize message
-            fipa::acl::ACLMessage message;
+            // Deserialize envelope
             fipa::acl::Letter envelope;
             
             if(fipa::acl::EnvelopeParser::parseData(messageString, envelope, fipa::acl::representation::XML))
@@ -109,28 +76,10 @@ void SocketTransport::startAccept()
                 std::cout << "The payload is:" << std::endl << envelope.getPayload() << std::endl;
                 mpMts->handle(envelope);
             }
-            else
-            {
-                if(fipa::acl::MessageParser::parseData(messageString, message, fipa::acl::representation::STRING_REP))
-                {
-                    // success
-                    std::cout << "GOT again: " << message.toString() << std::endl;
-
-                    // Forward message with the MessageTransport
-                    fipa::acl::Letter letter (message, fipa::acl::representation::BITEFFICIENT);
-                    mpMts->handle(letter);
-                }
-                else
-                {
-                    // FIXME ATM always parse errors with Jade messages
-                    std::cout << "parse error" << std::endl;
-                    throw std::runtime_error("Could not parse the sent message.");
-                }
-            }
         }
         catch(std::exception & e)
         {
-            LOG_WARN("Error forwarding message: %s", e.what());
+            LOG_WARN("Error forwarding envelope: %s", e.what());
         }
     }
 }
@@ -189,24 +138,14 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
 
 void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& addressString)
 {
-    // TODO tcp address extraction and udt::Address::fromString nearly identical
-    std::string address;
-    uint16_t port;
+    Address address = Address::fromString(addressString);
     
-    // address is in the format "tcp://Ip:Port
-    boost::regex r("tcp://([^:]*):([0-9]{1,5})");
-    boost::smatch what;
-    if(boost::regex_match(addressString, what, r))
-    {
-        address = std::string(what[1].first, what[1].second);
-        port = atoi( std::string(what[2].first, what[2].second).c_str() );
-    } else {
-        throw std::runtime_error("address '" + addressString + "' malformatted");
-    }
+    std::string ip = address.ip;
+    uint16_t port = address.port;
     
     tcp::socket socket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
-        boost::asio::ip::address::from_string(address), port);
+        boost::asio::ip::address::from_string(ip), port);
     boost::system::error_code ec;
     
     socket.connect(endpoint, ec);
@@ -228,7 +167,7 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     extraEnvelope.setPayloadLength(msgStr.length());
     // Add sender tcp address
     fipa::acl::AgentID sender = msg.getSender();
-    sender.addAddress(getAddress());
+    sender.addAddress(getAddress().toString());
     extraEnvelope.setFrom(sender);
     
     letter.addExtraEnvelope(extraEnvelope);

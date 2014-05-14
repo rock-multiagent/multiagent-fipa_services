@@ -11,6 +11,7 @@
 #include <fipa_acl/message_generator/envelope_generator.h>
 #include <fipa_acl/message_parser/envelope_parser.h>
 #include <fipa_services/ErrorHandling.hpp>
+#include <fipa_services/transports/Transport.hpp>
 
 namespace fipa {
 namespace services {
@@ -18,62 +19,6 @@ namespace udt {
 
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES;
 
-/**
- * \class Address
- * \brief Communication address specified by ip and port
- */
-struct Address
-{
-    std::string ip;
-    uint16_t port;
-
-    Address() {}
-
-    Address(const std::string& ip, uint16_t port);
-
-    /**
-     * Convert address to string
-     * \return Address as string
-     */
-    std::string toString() const;
-
-    /**
-     * Create address from string
-     * \return ArgumentError if address is malformatted
-     */
-    static Address fromString(const std::string& address);
-
-    /**
-     * Equals operator
-     * \return True if equal, false otherwise
-     */
-    bool operator==(const Address& other) const;
-
-    bool operator!=(const Address& other) const { return !this->operator==(other); }
-};
-
-/**
- * \class Connection
- * \brief A connection is defined by a communication address
- * \see Address
- */
-class Connection
-{
-protected:
-    uint16_t mPort;
-    std::string mIP;
-public:
-    Connection();
-    Connection(const std::string& ip, uint16_t port);
-    Connection(const Address& address);
-
-    uint16_t getPort() const { return mPort; }
-    std::string getIP() const { return mIP; }
-
-    Address getAddress() const { return Address(mIP, mPort); }
-
-    bool operator==(const Connection& other) const { return mPort == other.mPort && mIP == other.mIP; }
-};
 
 /**
  * \class OutgoingConnection

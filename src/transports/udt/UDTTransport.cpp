@@ -3,7 +3,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <ifaddrs.h>
 #include <stdexcept>
 #include <string.h>
 #include <base/Logging.hpp>
@@ -17,51 +16,6 @@ namespace udt {
 
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES = 20*1024*1024;
 
-Address::Address(const std::string& ip, uint16_t port)
-    : ip(ip)
-    , port(port)
-{}
-
-std::string Address::toString() const
-{
-    char buffer[128];
-    snprintf(buffer, 128, "udt://%s:%d",ip.c_str(),port);
-    return std::string(buffer);
-}
-
-Address Address::fromString(const std::string& addressString)
-{
-    boost::regex r("udt://([^:]*):([0-9]{1,5})");
-    boost::smatch what;
-    if(boost::regex_match( addressString ,what,r))
-    {
-        std::string address(what[1].first, what[1].second);
-        uint16_t port = atoi( std::string(what[2].first, what[2].second).c_str() );
-        return Address(address, port);
-    } else {
-        throw ArgumentError("address '" + addressString + "' malformatted");
-    }
-}
-
-bool Address::operator==(const Address& other) const
-{
-    return this->ip == other.ip && this->port == other.port;
-}
-
-Connection::Connection()
-    : mPort(0)
-    , mIP("0.0.0.0")
-{}
-
-Connection::Connection(const std::string& ip, uint16_t port)
-    : mPort(port)
-    , mIP(ip)
-{}
-
-Connection::Connection(const Address& address)
-    : mPort(address.port)
-    , mIP(address.ip)
-{}
 
 OutgoingConnection::OutgoingConnection()
 {}
@@ -323,32 +277,7 @@ fipa::acl::Letter Node::nextLetter()
 
 Address Node::getAddress(const std::string& interfaceName)
 {
-    struct ifaddrs* interfaces;
-
-    if(0 == getifaddrs(&interfaces))
-    {
-        struct ifaddrs* interface;
-        for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
-        {
-            if(interface->ifa_addr->sa_family == AF_INET)
-            {
-                // Match
-                if(interfaceName == std::string(interface->ifa_name))
-                {
-                    struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
-                    char* addr = inet_ntoa(sa->sin_addr);
-                    std::string ip = std::string(addr);
-
-                    freeifaddrs(interfaces);
-
-                    return Address(ip , mPort);
-                }
-            }
-        }
-    }
-
-    freeifaddrs(interfaces);
-    throw std::runtime_error("fipa::services::udt::Node: could not get interface address of '" + interfaceName + "'");
+    return Address(Transport::getLocalIPv4Address(interfaceName), mPort);
 }
 
 } // end namespace udt
