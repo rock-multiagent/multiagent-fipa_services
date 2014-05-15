@@ -65,8 +65,6 @@ public:
     
     fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
     
-    
-    
 private:
     fipa::services::message_transport::MessageTransport* mpMts;
     DistributedServiceDirectory* mpDSD;

@@ -108,13 +108,26 @@ std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
     throw std::runtime_error("fipa::services::Transport: could not get interface address of '" + interfaceName + "'");
 }
 
-Transport::Transport(const std::string& name, DistributedServiceDirectory* dsd, const fipa::services::ServiceLocation& serviceLocation)
+Transport::Transport(const std::string& name, fipa::services::DistributedServiceDirectory* dsd, const std::map<std::string, fipa::services::ServiceLocation> mServiceLocations)
     : mpDSD(dsd)
-    , mServiceLocation(serviceLocation)
+    , mServiceLocations(mServiceLocations)
     , name(name)
 {
-    mOutgoingConnections["udt"] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
-    mOutgoingConnections["tcp"] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
+    // Create a map of outgoing connections for each protocol that is to be used.
+    for(std::map<std::string, fipa::services::ServiceLocation>::const_iterator it = mServiceLocations.begin();
+        it != mServiceLocations.end(); it++)
+    {
+        mOutgoingConnections[it->first] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
+    }
+}
+
+const std::vector<fipa::services::ServiceLocation> Transport::getServiceLocations() const
+{
+    std::vector <fipa::services::ServiceLocation> v;
+    for( std::map<std::string, fipa::services::ServiceLocation>::const_iterator it = mServiceLocations.begin(); it != mServiceLocations.end(); it++ ) {
+        v.push_back( it->second );
+    }
+    return v;
 }
 
 fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter& letter)
@@ -154,8 +167,6 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                 if(it2 != it->second.end())
                 {
                     delete it2->second;
-                    // TODO this sux probably?
-                    //it2 = it->second.erase(it2);
                     it->second.erase(it2++);
                 }
             }
@@ -167,86 +178,88 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             // Extract the service location
             ServiceDirectoryEntry serviceEntry = list.front();
             ServiceLocator locator = serviceEntry.getLocator();
+            // FIXME the first only is not so good!?
             ServiceLocation location = locator.getFirstLocation();
-
-            if( location.getSignatureType() != mServiceLocation.getSignatureType() 
-                && std::find(additionalAcceptedSignatureTypes.begin(), additionalAcceptedSignatureTypes.end(), location.getSignatureType()) == additionalAcceptedSignatureTypes.end() )
+            Address address = Address::fromString(location.getServiceAddress());
+            
+            if (!mServiceLocations.count(address.protocol))
             {
-                LOG_INFO_S << "Transport '" << getName() << "' : service signature for '" << receiverName 
-                           << "' is '" << location.getSignatureType() << "' but expected '" << mServiceLocation.getSignatureType() << "' -- will not connect: " << serviceEntry.toString();
+                // Protocol not implemented (or activated)
+                LOG_WARN_S << "Transport '" << getName() << "' : protocol '" << address.protocol << "' is not supported.";
                 continue;
             }
 
-            if(location == mServiceLocation)
+            if( location.getSignatureType() != mServiceLocations[address.protocol].getSignatureType() 
+                && std::find(additionalAcceptedSignatureTypes.begin(), additionalAcceptedSignatureTypes.end(), location.getSignatureType()) == additionalAcceptedSignatureTypes.end() )
             {
-                // Local delivery is done by orogen task
+                LOG_INFO_S << "Transport '" << getName() << "' : service signature for '" << receiverName 
+                        << "' is '" << location.getSignatureType() << "' but expected '" << mServiceLocations[address.protocol].getSignatureType() << "' -- will not connect: " << serviceEntry.toString();
                 continue;
-            } else {
-                LOG_DEBUG_S << "Transport: '" << getName() << "' forwarding to other MTS";
+            }
+
+            LOG_DEBUG_S << "Transport: '" << getName() << "' forwarding to other MTS";
                 
-                Address address = Address::fromString(location.getServiceAddress());
-                if (!mOutgoingConnections.count(address.protocol))
+            // Sending message to another MTS
+            std::map<std::string, fipa::services::AbstractOutgoingConnection*>::const_iterator cit = mOutgoingConnections[address.protocol].find(receiverName);
+
+            bool connectionExists = false;
+            // Validate connection by comparing address in cache and current address in service directory
+            
+            fipa::services::AbstractOutgoingConnection* mtsConnection = 0;
+            if(cit != mOutgoingConnections[address.protocol].end())
+            {
+                LOG_DEBUG_S << "Transport: '" << getName() << "' checking on old connections.";
+                mtsConnection = cit->second;
+                if(mtsConnection->getAddress() != address)
                 {
-                    // Protocol not implemented (or activated)
-                    LOG_WARN_S << "Transport '" << getName() << "' : protocol '" << address.protocol << "' is not supported.";
-                    continue;
+                    LOG_DEBUG_S << "Transport '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() 
+                                << " vs. " << address.toString() << " -- deleting existing entry";
+
+                    delete cit->second;
+                    mOutgoingConnections[address.protocol].erase(receiverName);
+                } else {
+                    connectionExists = true;
                 }
-                
-                // Sending message to another MTS
-                std::map<std::string, fipa::services::AbstractOutgoingConnection*>::const_iterator cit = mOutgoingConnections[address.protocol].find(receiverName);
+            }
 
-                bool connectionExists = false;
-                // Validate connection by comparing address in cache and current address in service directory
+            // Cache newly created connection
+            if(!connectionExists)
+            {
                 
-                fipa::services::AbstractOutgoingConnection* mtsConnection = 0;
-                if(cit != mOutgoingConnections[address.protocol].end())
-                {
-                    mtsConnection = cit->second;
-                    if(mtsConnection->getAddress() != address)
-                    {
-                        LOG_DEBUG_S << "Transport '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() 
-                                    << " vs. " << address.toString() << " -- deleting existing entry";
-
-                        delete cit->second;
-                        mOutgoingConnections[address.protocol].erase(receiverName);
+                LOG_DEBUG_S << "Transport: '" << getName() << "' establishing new connection.";
+                // FIXME this is what fails
+                try {
+                    // Switch protocols
+                    if(address.protocol == "udt") {
+                        mtsConnection = new udt::OutgoingConnection(address);
+                    } else if(address.protocol == "tcp") {
+                        mtsConnection = new tcp::OutgoingConnection(address);
                     } else {
-                        connectionExists = true;
-                    }
-                }
-
-                // Cache newly created connection
-                if(!connectionExists)
-                {
-                    try {
-                        // Switch protocols // TODO 
-                        if(address.protocol == "udt") {
-                            mtsConnection = new udt::OutgoingConnection(address);
-                        } else if(address.protocol == "tcp") {
-                            mtsConnection = new tcp::OutgoingConnection(address);
-                        }
-                        mOutgoingConnections[address.protocol][receiverName] = mtsConnection;
-                    } catch(const std::runtime_error& e)
-                    {
-                        LOG_WARN_S << "Transport '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what();
+                        LOG_WARN_S << "Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
                         continue;
                     }
-                }
-
-                LOG_DEBUG_S << "Transport: '" << getName() << "' : sending letter to '" << receiverName << "'";
-                try {
-                    mtsConnection->sendLetter(updatedLetter);
-
-                    fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
-                    if(it != remainingReceivers.end())
-                    {
-                        remainingReceivers.erase(it);
-                    }
-                } catch(const std::runtime_error& e)
+                    mOutgoingConnections[address.protocol][receiverName] = mtsConnection;
+                } catch(const std::exception& e)
                 {
-                    LOG_WARN_S << "Transport '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what();
+                    LOG_WARN_S << "Transport '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what();
                     continue;
                 }
-            } // end handling
+            }
+
+            LOG_DEBUG_S << "Transport: '" << getName() << "' : sending letter to '" << receiverName << "'";
+            try {
+                mtsConnection->sendLetter(updatedLetter);
+
+                fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
+                if(it != remainingReceivers.end())
+                {
+                    remainingReceivers.erase(it);
+                }
+            } catch(const std::runtime_error& e)
+            {
+                LOG_WARN_S << "Transport '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what();
+                continue;
+            } 
         }
     }
 

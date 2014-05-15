@@ -78,7 +78,7 @@ public:
 
 /**
  * \class AbstractOutgoingConnection
- * \brief A unidirectional, outgoing connection that allows to send fipa letter to a receiver
+ * \brief A unidirectional, outgoing connection that allows to send fipa letters to a receiver
  */
 class AbstractOutgoingConnection : public fipa::services::Connection
 {
@@ -101,19 +101,17 @@ public:
      * \param letter FIPA letter
      */
     virtual void sendLetter(fipa::acl::Letter& letter) = 0;
-};   
+};
 
 /**
  * \class Transport
  * \brief Connection management base class. Supports udt and tcp.
  * Also static method collection facilitating transport implementations.
  */
-// TODO configurable which protocols to use
 class Transport
 {
 public:
-    // TODO more than 1 serviceLocation!
-    Transport(const std::string& name, DistributedServiceDirectory* dsd, const fipa::services::ServiceLocation& serviceLocation);
+    Transport(const std::string& name, DistributedServiceDirectory* dsd, const std::map<std::string, fipa::services::ServiceLocation> mServiceLocations);
     
     /**
      * Get local IPv4 address for a given interface
@@ -130,9 +128,9 @@ public:
     fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
     
     // The name of the MessageTransportTask using this.
-    std::string getName() {return name; };
+    const std::string& getName() const {return name; }
     
-    fipa::services::ServiceLocation getServiceLocation() { return mServiceLocation; };
+    const std::vector<fipa::services::ServiceLocation> getServiceLocations() const;
     
 private:
     static std::vector<std::string> additionalAcceptedSignatureTypes;
@@ -141,10 +139,9 @@ private:
     DistributedServiceDirectory* mpDSD;
     // Outgoing connections for each protocol
     std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> > mOutgoingConnections;
-    
-    //std::map<std::string, fipa::services::udt::OutgoingConnection*> mUDTConnections;
-    //std::map<std::string, fipa::services::tcp::OutgoingConnection*> mTCPConnections;
-    fipa::services::ServiceLocation mServiceLocation;
+    // Service location for each protocol.
+    // The protocolsfor which serviceLocations exist in this map, are activated
+    std::map<std::string, fipa::services::ServiceLocation> mServiceLocations;
 };
 
 } // end namespace services

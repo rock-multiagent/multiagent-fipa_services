@@ -17,10 +17,10 @@ class ServiceLocation
     std::string mSignatureType;
     std::string mServiceSignature;
 
-    ServiceLocation() {}
-
 public:
     enum Field { SIGNATURE_TYPE = 0x01, SERVICE_SIGNATURE = 0x02, SERVICE_ADDRESS = 0x04 };
+    
+    ServiceLocation() {}
 
     ServiceLocation(const std::string& serviceAddress, const std::string& signatureType = "", const std::string& serviceSignature = "")
         : mServiceAddress(serviceAddress)
@@ -41,7 +41,7 @@ public:
      * Equals operator for service location
      * \return true if service locations are equal
      */
-    bool operator==(const ServiceLocation& other);
+    bool operator==(const ServiceLocation& other) const;
 };
 
 typedef std::vector<ServiceLocation> ServiceLocations;

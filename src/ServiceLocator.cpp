@@ -47,7 +47,7 @@ ServiceLocation ServiceLocation::fromString(const std::string& locationString)
     return location;
 }
 
-bool ServiceLocation::operator==(const ServiceLocation& other)
+bool ServiceLocation::operator==(const fipa::services::ServiceLocation& other) const
 {
     return mServiceAddress == other.mServiceAddress && mServiceSignature == other.mServiceSignature && mSignatureType == other.mSignatureType;
 }
