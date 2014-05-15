@@ -14,6 +14,38 @@ namespace services {
 namespace tcp {
     
 /**
+ * \class OutgoingConnection
+ * \brief A unidirectional, outgoing tcp connection that allows to send fipa letter to a receiver
+ */
+class OutgoingConnection : public fipa::services::AbstractOutgoingConnection
+{
+public:
+    OutgoingConnection();
+    OutgoingConnection(const std::string& ipaddress, uint16_t port);
+    OutgoingConnection(const fipa::services::Address& address);
+    ~OutgoingConnection();
+
+    /**
+     * Connect to ipaddress and port
+     * \param ipaddress IP as string
+     * \param port Port number
+     * \throws if connection cannot be established
+     */
+    void connect(const std::string& ipaddress, uint16_t port);
+
+    /**
+     * Send fipa::acl::Letter
+     * \param letter FIPA letter
+     */
+    void sendLetter(fipa::acl::Letter& letter);
+    
+private:
+    boost::asio::ip::tcp::socket mClientSocket;
+    boost::asio::io_service mIo_service;
+};    
+
+    
+/**
  * This transport implementation forwards messages via sockets to JADE (or something else). It also receives messages on a socket and forwards them
  * in the other direction, to ROCK agents.
  */
@@ -33,13 +65,16 @@ public:
     
     fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
     
+    
+    
 private:
     fipa::services::message_transport::MessageTransport* mpMts;
     DistributedServiceDirectory* mpDSD;
-    
     boost::asio::io_service mIo_service;
     boost::asio::ip::tcp::acceptor mAcceptor;
     boost::asio::ip::tcp::socket mSocket;
+    // FIXME Debug
+    boost::asio::ip::tcp::socket clientSocket;
     
     // Address and Port
     int getPort();

@@ -6,17 +6,21 @@
 #include <fipa_acl/fipa_acl.h>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_services/ServiceLocator.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace fipa {
 namespace services {
-// Forward declaration
+// Forward declarations TODO remove
 namespace udt {
+    class OutgoingConnection;
+}
+namespace tcp {
     class OutgoingConnection;
 }
     
 /**
  * \class Address
- * \brief Communication address specified by ip and port
+ * \brief Communication address specified by ip,  port, and protocol
  */
 struct Address
 {
@@ -58,29 +62,57 @@ struct Address
 class Connection
 {
 protected:
-    uint16_t mPort;
-    std::string mIP;
+    Address mAddress;
 public:
     Connection();
-    Connection(const std::string& ip, uint16_t port);
+    Connection(const std::string& ip, uint16_t port, const std::string& protocol = "udt");
     Connection(const Address& address);
 
-    uint16_t getPort() const { return mPort; }
-    std::string getIP() const { return mIP; }
+    uint16_t getPort() const { return mAddress.port; }
+    std::string getIP() const { return mAddress.ip; }
 
-    Address getAddress() const { return Address(mIP, mPort); }
+    Address getAddress() const { return mAddress; }
 
-    bool operator==(const Connection& other) const { return mPort == other.mPort && mIP == other.mIP; }
+    bool operator==(const Connection& other) const { return mAddress == other.mAddress; }
 };
 
 /**
+ * \class AbstractOutgoingConnection
+ * \brief A unidirectional, outgoing connection that allows to send fipa letter to a receiver
+ */
+class AbstractOutgoingConnection : public fipa::services::Connection
+{
+public:
+    AbstractOutgoingConnection();
+    AbstractOutgoingConnection(const std::string& ipaddress, uint16_t port);
+    AbstractOutgoingConnection(const fipa::services::Address& address);
+    virtual ~AbstractOutgoingConnection() {};
+    
+    /**
+     * Connect to ipaddress and port
+     * \param ipaddress IP as string
+     * \param port Port number
+     * \throws if connection cannot be established
+     */
+    virtual void connect(const std::string& ipaddress, uint16_t port) = 0;
+
+    /**
+     * Send fipa::acl::Letter
+     * \param letter FIPA letter
+     */
+    virtual void sendLetter(fipa::acl::Letter& letter) = 0;
+};   
+
+/**
  * \class Transport
- * \brief Connection management base class.
+ * \brief Connection management base class. Supports udt and tcp.
  * Also static method collection facilitating transport implementations.
  */
+// TODO configurable which protocols to use
 class Transport
 {
 public:
+    // TODO more than 1 serviceLocation!
     Transport(const std::string& name, DistributedServiceDirectory* dsd, const fipa::services::ServiceLocation& serviceLocation);
     
     /**
@@ -95,7 +127,7 @@ public:
      * \param letter enenvelope
      * \return list of agents for which the delivery failed
      */
-    fipa::acl::AgentIDList deliverOrForwardLetterViaUDT(const fipa::acl::Letter& letter);
+    fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
     
     // The name of the MessageTransportTask using this.
     std::string getName() {return name; };
@@ -103,9 +135,15 @@ public:
     fipa::services::ServiceLocation getServiceLocation() { return mServiceLocation; };
     
 private:
+    static std::vector<std::string> additionalAcceptedSignatureTypes;
+    
     std::string name;
     DistributedServiceDirectory* mpDSD;
-    std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
+    // Outgoing connections for each protocol
+    std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> > mOutgoingConnections;
+    
+    //std::map<std::string, fipa::services::udt::OutgoingConnection*> mUDTConnections;
+    //std::map<std::string, fipa::services::tcp::OutgoingConnection*> mTCPConnections;
     fipa::services::ServiceLocation mServiceLocation;
 };
 

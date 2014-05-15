@@ -18,12 +18,90 @@
 namespace fipa {
 namespace services {
 namespace tcp {
+// Class OutgoingConnection
+OutgoingConnection::OutgoingConnection()
+    : mClientSocket(mIo_service)
+{}
 
+OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t port)
+    : fipa::services::AbstractOutgoingConnection(ipaddress, port)
+    , mClientSocket(mIo_service)
+{
+    connect(ipaddress, port);
+}
+
+OutgoingConnection::OutgoingConnection(const Address& address)
+    : fipa::services::AbstractOutgoingConnection(address)
+    , mClientSocket(mIo_service)
+{
+    connect(address.ip, address.port);
+}
+
+OutgoingConnection::~OutgoingConnection()
+{
+    // FIXME needed? socket close?
+}
+
+void OutgoingConnection::connect(const std::string& ipaddress, uint16_t port)
+{
+    boost::asio::ip::tcp::endpoint endpoint(
+        boost::asio::ip::address::from_string(ipaddress), port);
+    boost::system::error_code ec;
+    
+    // FIXME isOpen?
+    if(!mClientSocket.is_open())
+    {
+        mClientSocket.connect(endpoint, ec);
+        if (ec)
+        {
+            // An error occurred.
+            throw boost::system::system_error(ec);
+        }
+    }
+}
+
+void OutgoingConnection::sendLetter(acl::Letter& letter)
+{
+    fipa::acl::ACLMessage msg = letter.getACLMessage();
+    std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
+    std::cout << "Msg Str: " << msgStr << std::endl;
+    
+    // Extra envelope
+    // Altering encoding to string
+    fipa::acl::ACLBaseEnvelope extraEnvelope;
+    extraEnvelope.setACLRepresentation(fipa::acl::representation::STRING_REP);
+    extraEnvelope.setPayloadLength(msgStr.length());
+    // Add sender tcp address
+    fipa::acl::AgentID sender = msg.getSender();
+    sender.addAddress(getAddress().toString());
+    extraEnvelope.setFrom(sender);
+    
+    letter.addExtraEnvelope(extraEnvelope);
+    // Modify the payload
+    letter.setPayload(msgStr);
+    
+    std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::XML);
+    std::cout << "Env XML: " << envStr << std::endl;
+    
+    boost::system::error_code ec;
+    // Send including a line break at the end
+    boost::asio::write(mClientSocket, boost::asio::buffer(envStr + "\n"),
+                        boost::asio::transfer_all(), ec);
+    if (ec)
+    {
+        // An error occurred.
+        throw boost::system::system_error(ec);
+    }
+}
+
+    
+// Class SocketTransport
 SocketTransport::SocketTransport(fipa::services::message_transport::MessageTransport* mts, fipa::services::DistributedServiceDirectory* dsd)
     : mAcceptor(mIo_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 0))
     , mpMts(mts)
     , mpDSD(dsd)
     , mSocket(mIo_service)
+    , clientSocket(mIo_service)
 {
     mAcceptor.listen();
     boost::thread t(&SocketTransport::startAccept, this);
@@ -45,7 +123,6 @@ void SocketTransport::startAccept()
     {
         try
         {
-            //tcp::socket socket(mIo_service);
             mAcceptor.accept(mSocket);
 
             // Read message (EOF delimited)
@@ -109,9 +186,9 @@ fipa::acl::AgentIDList SocketTransport::deliverForwardLetter(const fipa::acl::Le
             
             BOOST_FOREACH(ServiceLocation location, locations)
             {
-                // TODO Explicitly check for this?
                 if(location.getSignatureType() != "JadeProxyAgent")
                 {
+                    LOG_INFO_S << "Not a Jade agent. (" << location.getSignatureType() << ") Will not connect.";
                     continue;
                 }
                 // Now, we have a tcp locator to connect to                          
@@ -142,17 +219,23 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     std::string ip = address.ip;
     uint16_t port = address.port;
     
-    boost::asio::ip::tcp::socket socket(mIo_service);
+    //boost::asio::ip::tcp::socket clientSocket(mIo_service);
     boost::asio::ip::tcp::endpoint endpoint(
         boost::asio::ip::address::from_string(ip), port);
     boost::system::error_code ec;
     
-    socket.connect(endpoint, ec);
-    if (ec)
+    // FIXME debug
+    if(!clientSocket.is_open())
     {
-        // An error occurred.
-        throw boost::system::system_error(ec);
+        clientSocket.connect(endpoint, ec);
+        if (ec)
+        {
+            // An error occurred.
+            throw boost::system::system_error(ec);
+        }
     }
+    
+    
     
     
     fipa::acl::ACLMessage msg = letter.getACLMessage();
@@ -176,7 +259,8 @@ void SocketTransport::connectAndSend(acl::Letter& letter, const std::string& add
     std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::XML);
     std::cout << "Env XML: " << envStr << std::endl;
     
-    boost::asio::write(socket, boost::asio::buffer(envStr),
+    // Send including a line break at the end
+    boost::asio::write(clientSocket, boost::asio::buffer(envStr + "\n"),
                         boost::asio::transfer_all(), ec);
     if (ec)
     {

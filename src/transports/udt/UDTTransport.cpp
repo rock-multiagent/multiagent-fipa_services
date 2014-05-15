@@ -21,15 +21,16 @@ OutgoingConnection::OutgoingConnection()
 {}
 
 OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t port)
-    : Connection(ipaddress, port)
+    : fipa::services::AbstractOutgoingConnection(ipaddress, port)
 {
     connect(ipaddress, port);
 }
 
 OutgoingConnection::OutgoingConnection(const Address& address)
-    : Connection(address)
+    : fipa::services::AbstractOutgoingConnection(address)
+
 {
-    connect(address);
+    connect(address.ip, address.port);
 }
 
 OutgoingConnection::~OutgoingConnection()
@@ -87,7 +88,7 @@ void OutgoingConnection::sendData(const std::string& data, int ttl, bool inorder
 }
 
 
-void OutgoingConnection::sendLetter(const fipa::acl::Letter& letter, int ttl, bool inorder) const
+void OutgoingConnection::sendLetter0(const fipa::acl::Letter& letter, int ttl, bool inorder) const
 {
     using namespace fipa::acl;
     std::string encodedData = EnvelopeGenerator::create(letter, representation::BITEFFICIENT);
@@ -181,11 +182,11 @@ void Node::listen(uint16_t port, uint32_t maxClients)
         char hostname[HOST_NAME_MAX];
         if(0 == gethostname(hostname,HOST_NAME_MAX))
         {
-            mIP = std::string(hostname);
+            mAddress.ip = std::string(hostname);
         } else {
             throw std::runtime_error("fipa_service::udt::Node: could not get hostname");
         }
-        mPort = ntohs(sock_addr.sin_port);
+        mAddress.port = ntohs(sock_addr.sin_port);
     }
 }
 
@@ -277,7 +278,7 @@ fipa::acl::Letter Node::nextLetter()
 
 Address Node::getAddress(const std::string& interfaceName)
 {
-    return Address(Transport::getLocalIPv4Address(interfaceName), mPort);
+    return Address(Transport::getLocalIPv4Address(interfaceName), mAddress.port);
 }
 
 } // end namespace udt

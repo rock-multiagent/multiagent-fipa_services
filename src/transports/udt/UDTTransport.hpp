@@ -24,7 +24,7 @@ extern const uint32_t MAX_MESSAGE_SIZE_BYTES;
  * \class OutgoingConnection
  * \brief A unidirectional, outgoing udt connection that allows to send fipa letter to a receiver
  */
-class OutgoingConnection : public fipa::services::Connection
+class OutgoingConnection : public fipa::services::AbstractOutgoingConnection
 {
     UDTSOCKET mSocket;
 
@@ -44,12 +44,12 @@ public:
      * \throws if connection cannot be established
      */
     void connect(const std::string& ipaddress, uint16_t port);
-
+    
     /**
-     * Connect to a given address
-     * \param address Connection address
+     * Send fipa::acl::Letter
+     * \param letter FIPA letter
      */
-    void connect(const fipa::services::Address& address) { connect(address.ip, address.port); }
+    void sendLetter(fipa::acl::Letter& letter) { sendLetter0(letter); }
 
     /**
      * Send message
@@ -65,7 +65,7 @@ public:
      * \param ttl Time to live for this message, default is unlimited
      * \param inorder Set to true if message you be received only in the right order
      */
-    void sendLetter(const fipa::acl::Letter& letter, int ttl = -1, bool inorder = true) const;
+    void sendLetter0(const fipa::acl::Letter& letter, int ttl = -1, bool inorder = true) const;
 };
 
 /**
