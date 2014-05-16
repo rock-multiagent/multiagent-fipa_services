@@ -41,50 +41,28 @@ public:
     
 private:
     boost::asio::ip::tcp::socket mClientSocket;
-    boost::asio::io_service mIo_service;
 };    
 
-    
+// TODO SocketTransport::stopListening
 /**
- * This transport implementation forwards messages via sockets to JADE (or something else). It also receives messages on a socket and forwards them
- * in the other direction, to ROCK agents.
+ * This transport implementation receives messages on a socket and forwards them to ROCK agents. Everything is static.
  */
 class SocketTransport
 {
 public:
-    /**
-     * The constructor needs pointers the the main message transport and to the DistributedServiceDirectory,
-     * to locate JADE agents.
-     */
-    SocketTransport(fipa::services::message_transport::MessageTransport* mts, DistributedServiceDirectory* dsd);
-    
-    /**
-     * This method is called once a letter arrived and needs to be forwarded.
-     */
-    fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter);
-    
-    fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
+    static void startListening(fipa::services::message_transport::MessageTransport* mts);
+    static fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
+    static boost::asio::io_service& getIOService();
     
 private:
-    fipa::services::message_transport::MessageTransport* mpMts;
-    DistributedServiceDirectory* mpDSD;
-    boost::asio::io_service mIo_service;
-    boost::asio::ip::tcp::acceptor mAcceptor;
-    boost::asio::ip::tcp::socket mSocket;
-    // FIXME Debug
-    boost::asio::ip::tcp::socket clientSocket;
-    
     // Address and Port
-    int getPort();
+    static int getPort();
+    static void startAccept();
     
-    void startAccept();
-    
-    /**
-     * Tries to connect to the socket with the given address in format
-     * "tcp://IP:Port" and send the given letter. Throws an exception on
-     * failure.
-     */
-    void connectAndSend(fipa::acl::Letter& letter, const std::string& addressString);
+    static boost::asio::io_service io_service;
+    static boost::asio::ip::tcp::acceptor mAcceptor;
+    static boost::asio::ip::tcp::socket mSocket;
+    static fipa::services::message_transport::MessageTransport* mpMts;
 };
     
 } // namespace tcp

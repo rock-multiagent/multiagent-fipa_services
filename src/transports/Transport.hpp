@@ -111,7 +111,7 @@ public:
 class Transport
 {
 public:
-    Transport(const std::string& name, DistributedServiceDirectory* dsd, const std::map<std::string, fipa::services::ServiceLocation> mServiceLocations);
+    Transport(const std::string& name, DistributedServiceDirectory* dsd, const std::vector<fipa::services::ServiceLocation> mServiceLocations);
     
     /**
      * Get local IPv4 address for a given interface
@@ -135,13 +135,17 @@ public:
 private:
     static std::vector<std::string> additionalAcceptedSignatureTypes;
     
+    std::string getProtocolOfServiceLocation(const fipa::services::ServiceLocation& location);
+    
     std::string name;
     DistributedServiceDirectory* mpDSD;
+    // Service locations (for each protocol).
+    std::vector<fipa::services::ServiceLocation> mServiceLocations;
     // Outgoing connections for each protocol
     std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> > mOutgoingConnections;
-    // Service location for each protocol.
-    // The protocolsfor which serviceLocations exist in this map, are activated
-    std::map<std::string, fipa::services::ServiceLocation> mServiceLocations;
+    // Mapping the ServiceTypeSignatures to their protocols
+    std::map<std::string, std::string> mServiceSignaturesTypes;
+    
 };
 
 } // end namespace services

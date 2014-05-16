@@ -9,6 +9,7 @@
 #include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/assign.hpp>
+#include <boost/foreach.hpp>
 #include <fipa_services/transports/udt/UDTTransport.hpp>
 #include <fipa_services/transports/tcp/SocketTransport.hpp>
 
@@ -108,26 +109,29 @@ std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
     throw std::runtime_error("fipa::services::Transport: could not get interface address of '" + interfaceName + "'");
 }
 
-Transport::Transport(const std::string& name, fipa::services::DistributedServiceDirectory* dsd, const std::map<std::string, fipa::services::ServiceLocation> mServiceLocations)
+Transport::Transport(const std::string& name, fipa::services::DistributedServiceDirectory* dsd, const std::vector<fipa::services::ServiceLocation> mServiceLocations)
     : mpDSD(dsd)
     , mServiceLocations(mServiceLocations)
     , name(name)
 {
     // Create a map of outgoing connections for each protocol that is to be used.
-    for(std::map<std::string, fipa::services::ServiceLocation>::const_iterator it = mServiceLocations.begin();
-        it != mServiceLocations.end(); it++)
+    // Also save the service signature types
+    BOOST_FOREACH(fipa::services::ServiceLocation location, mServiceLocations)
     {
-        mOutgoingConnections[it->first] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
-    }
+        std::string protocol = getProtocolOfServiceLocation(location);
+        mOutgoingConnections[protocol] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
+        mServiceSignaturesTypes[protocol] = location.getSignatureType();
+    }  
+}
+
+std::string Transport::getProtocolOfServiceLocation(const ServiceLocation& location)
+{
+    return Address::fromString(location.getServiceAddress()).protocol;
 }
 
 const std::vector<fipa::services::ServiceLocation> Transport::getServiceLocations() const
 {
-    std::vector <fipa::services::ServiceLocation> v;
-    for( std::map<std::string, fipa::services::ServiceLocation>::const_iterator it = mServiceLocations.begin(); it != mServiceLocations.end(); it++ ) {
-        v.push_back( it->second );
-    }
-    return v;
+    return mServiceLocations;
 }
 
 fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter& letter)
@@ -182,18 +186,18 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             ServiceLocation location = locator.getFirstLocation();
             Address address = Address::fromString(location.getServiceAddress());
             
-            if (!mServiceLocations.count(address.protocol))
+            if (!mOutgoingConnections.count(address.protocol))
             {
                 // Protocol not implemented (or activated)
                 LOG_WARN_S << "Transport '" << getName() << "' : protocol '" << address.protocol << "' is not supported.";
                 continue;
             }
 
-            if( location.getSignatureType() != mServiceLocations[address.protocol].getSignatureType() 
+            if( location.getSignatureType() != mServiceSignaturesTypes[address.protocol]
                 && std::find(additionalAcceptedSignatureTypes.begin(), additionalAcceptedSignatureTypes.end(), location.getSignatureType()) == additionalAcceptedSignatureTypes.end() )
             {
                 LOG_INFO_S << "Transport '" << getName() << "' : service signature for '" << receiverName 
-                        << "' is '" << location.getSignatureType() << "' but expected '" << mServiceLocations[address.protocol].getSignatureType() << "' -- will not connect: " << serviceEntry.toString();
+                        << "' is '" << location.getSignatureType() << "' but expected '" << mServiceSignaturesTypes[address.protocol] << "' -- will not connect: " << serviceEntry.toString();
                 continue;
             }
 
@@ -227,12 +231,13 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             {
                 
                 LOG_DEBUG_S << "Transport: '" << getName() << "' establishing new connection.";
-                // FIXME this is what fails
                 try {
                     // Switch protocols
                     if(address.protocol == "udt") {
+                        LOG_DEBUG_S << "UDT is the protocol.";
                         mtsConnection = new udt::OutgoingConnection(address);
                     } else if(address.protocol == "tcp") {
+                        LOG_DEBUG_S << "TCP is the protocol.";
                         mtsConnection = new tcp::OutgoingConnection(address);
                     } else {
                         LOG_WARN_S << "Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
