@@ -123,8 +123,7 @@ void SocketTransport::startListening(fipa::services::message_transport::MessageT
 {
     mpMts = mts;
     mAcceptor.listen();
-    // FIXME
-    LOG_WARN_S << "SocketTransport now listening on " << getAddress().toString();
+    LOG_WARN_S << "SocketTransport: now listening on " << getAddress().toString();
     boost::thread t(&SocketTransport::startAccept);
 }
 
@@ -170,13 +169,23 @@ void SocketTransport::startAccept()
             }
             catch(std::exception & e)
             {
-                LOG_WARN("Error forwarding envelope: %s", e.what());
+                LOG_WARN_S << "SocketTransport: Error forwarding envelope: " << e.what();
+            }
+            
+            // Always close the connection at the moment after reading everything
+            try
+            {
+            mSocket.close();
+            }
+            catch(boost::system::system_error& e)
+            {
+                LOG_ERROR_S << "SocketTransport: Could not close the socket: " << e.what();
             }
         }
     }
     catch(std::exception & e)
     {
-        LOG_ERROR("Error accepting connection: %s", e.what());
+        LOG_ERROR_S << "SocketTransport: Error accepting connection: " << e.what();
     }
 }
 

@@ -9,15 +9,7 @@
 #include <boost/asio/ip/tcp.hpp>
 
 namespace fipa {
-namespace services {
-// Forward declarations TODO remove
-namespace udt {
-    class OutgoingConnection;
-}
-namespace tcp {
-    class OutgoingConnection;
-}
-    
+namespace services {    
 /**
  * \class Address
  * \brief Communication address specified by ip,  port, and protocol
