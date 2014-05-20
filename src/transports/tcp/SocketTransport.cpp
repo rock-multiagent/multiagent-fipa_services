@@ -13,7 +13,7 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-
+#include <string>
 
 namespace fipa {
 namespace services {
@@ -35,11 +35,6 @@ OutgoingConnection::OutgoingConnection(const Address& address)
     , mClientSocket(SocketTransport::getIOService())
 {
     connect(address.ip, address.port);
-}
-
-OutgoingConnection::~OutgoingConnection()
-{
-    // FIXME needed? socket close?
 }
 
 void OutgoingConnection::connect(const std::string& ipaddress, uint16_t port)
@@ -67,7 +62,6 @@ void OutgoingConnection::sendLetter(acl::Letter& letter)
     
     fipa::acl::ACLMessage msg = letter.getACLMessage();
     std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
-    std::cout << "Msg Str: " << msgStr << std::endl;
     
     // Extra envelope
     // Altering encoding to string
@@ -84,7 +78,7 @@ void OutgoingConnection::sendLetter(acl::Letter& letter)
     letter.setPayload(msgStr);
     
     std::string envStr = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::XML);
-    std::cout << "Env XML: " << envStr << std::endl;
+    LOG_DEBUG_S << "OutgoingConnection: Writing on socket: " << envStr;
     
     boost::system::error_code ec;
     // Send. No line break at the end!
@@ -150,43 +144,82 @@ void SocketTransport::read(boost::asio::ip::tcp::socket* socket)
 {
     try
     {
-        LOG_INFO_S << "SocketTransport: Reading a new envelope from socket.";
-        // Read message (EOF delimited)
-        boost::asio::streambuf messageBuf;
+        const std::string splitter = "</envelope>";
+        
+        // Read until "</envelope>" has been read.
         boost::system::error_code  ec;
-        boost::asio::read_until(*socket, messageBuf, EOF, ec);
-        if(ec && ec != boost::asio::error::eof)
-        {
-            throw std::runtime_error("Some error reading from socket: " + ec.message());
-        }
-
-        boost::asio::streambuf::const_buffers_type bufs = messageBuf.data();
-        std::string messageString(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + messageBuf.size());
+        char segment[4096];
+        int charsRead;
+        std::string buffer;
         
-        // cut leading and trailing whitespace, as this could be incompatible with payload_length
-        boost::algorithm::trim(messageString);
-
-        std::cout << "GOT: " << messageString << std::endl;
-
-        // Deserialize envelope
-        fipa::acl::Letter envelope;
-        
-        if(fipa::acl::EnvelopeParser::parseData(messageString, envelope, fipa::acl::representation::XML))
+        while((charsRead = socket->read_some(boost::asio::buffer(segment), ec)) != 0)
         {
-            // success
-            std::cout << "success!" << std::endl;
-            std::cout << "The payload is:" << std::endl << envelope.getPayload() << std::endl;
-            mpMts->handle(envelope);
+            if(ec && ec != boost::asio::error::eof)
+            {
+                throw std::runtime_error("Some error reading from socket: " + ec.message());
+            }
+            buffer += std::string(segment, 0, charsRead);
+            
+            // As long as a (new) whole envelope is included...
+            std::string::size_type index;
+            while((index = buffer.find(splitter, 0)) != std::string::npos)
+            {
+                // Include the end tag
+                index += splitter.length();
+                
+                // cut leading and trailing whitespace, as this could be incompatible with payload_length
+                // boost::algorithm::trim(envelopeString);
+
+                // Now the envelope has been read completely
+                LOG_DEBUG_S << "SocketTransport: Read into buffer: " << buffer;
+
+                // Deserialize envelope
+                fipa::acl::Letter envelope;
+                
+                if(!fipa::acl::EnvelopeParser::parseData(buffer, envelope, fipa::acl::representation::XML))
+                {
+                    throw std::runtime_error("Parsing the envelope failed.");
+                }
+                
+                // Get payload length
+                int msgLen = envelope.flattened().getPayloadLength();
+                
+                // Now read until the whole payload is included
+                while(buffer.size() < index + msgLen
+                    && (charsRead = socket->read_some(boost::asio::buffer(segment), ec)) != 0)
+                {
+                    if(ec && ec != boost::asio::error::eof)
+                    {
+                        throw std::runtime_error("Some error reading from socket: " + ec.message());
+                    }
+                    buffer += std::string(segment, 0, charsRead);
+                }
+                
+                if(buffer.size() < index + msgLen) {
+                    throw std::runtime_error("Stream only contains " + boost::lexical_cast<std::string>(buffer.size()) +
+                    " chars. Expected " + boost::lexical_cast<std::string>(index + msgLen));
+                    
+                } else {
+                    // Now set the envelope payload
+                    envelope.setPayload(buffer.substr(index, msgLen));
+                    LOG_DEBUG_S << "SocketTransport: Handling message payload: " << envelope.getPayload();
+                    mpMts->handle(envelope);
+                }
+                
+                // Remove envelope and message from the buffer
+                buffer.erase(0, index + msgLen);
+            }
         }
     }
-    catch(std::exception & e)
+    catch(std::exception& e)
     {
         LOG_WARN_S << "SocketTransport: Error forwarding envelope: " << e.what();
     }
 
-    // Always close the connection at the moment after reading everything
+    // Always close the connection in the end!
     try
     {
+        LOG_INFO_S << "SocketTransport: Closing connection";
         socket->close();
         delete socket;
     }

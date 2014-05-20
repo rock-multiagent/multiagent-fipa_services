@@ -23,7 +23,6 @@ public:
     OutgoingConnection();
     OutgoingConnection(const std::string& ipaddress, uint16_t port);
     OutgoingConnection(const fipa::services::Address& address);
-    ~OutgoingConnection();
 
     /**
      * Connect to ipaddress and port
