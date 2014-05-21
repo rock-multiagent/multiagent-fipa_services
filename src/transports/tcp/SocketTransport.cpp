@@ -47,7 +47,7 @@ void OutgoingConnection::connect(const std::string& ipaddress, uint16_t port)
     mClientSocket.connect(endpoint, ec);
     if (ec)
     {
-        LOG_DEBUG_S << "Error: " << ec.message();
+        LOG_DEBUG_S << "OutgoingConnection: Error: " << ec.message();
         // An error occurred.
         throw boost::system::system_error(ec);
     }

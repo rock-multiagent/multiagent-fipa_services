@@ -148,7 +148,7 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
     // If it is a local client, deliver locally, otherwise forward to the known locator, which is an MTS in this context
     for(; rit != receivers.end(); ++rit)
     {
-        LOG_DEBUG_S << "Transport '" << getName() << "' : deliverOrForwardLetter to: " << rit->getName();
+        LOG_DEBUG_S << "Transport '" << getName() << "': deliverOrForwardLetter to: " << rit->getName();
 
         // Handle delivery
         // The name of the next destination, can be an intermediate receiver
@@ -159,7 +159,7 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
         fipa::services::ServiceDirectoryList list = mpDSD->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
         if(list.empty())
         {
-            LOG_WARN_S << "Transport '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown";
+            LOG_WARN_S << "Transport '" << getName() << "': could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown";
 
             // Cleanup existing entries
             for(std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> >::iterator it = mOutgoingConnections.begin();
@@ -174,7 +174,7 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             }
             continue;
         } else if(list.size() > 1) {
-            LOG_WARN_S << "Transport '" << getName() << "' : receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate";
+            LOG_WARN_S << "Transport '" << getName() << "': receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate";
         } else {
             using namespace fipa::services;
             // Extract the service location
@@ -182,7 +182,6 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             ServiceLocator locator = serviceEntry.getLocator();
             ServiceLocations locations = locator.getLocations();
             
-            // Try all service locations FIXME comtnue's
             for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
             {
                 ServiceLocation location = *it;
@@ -198,12 +197,12 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                 if( location.getSignatureType() != mServiceSignaturesTypes[address.protocol]
                     && std::find(additionalAcceptedSignatureTypes.begin(), additionalAcceptedSignatureTypes.end(), location.getSignatureType()) == additionalAcceptedSignatureTypes.end() )
                 {
-                    LOG_INFO_S << "Transport '" << getName() << "' : service signature for '" << receiverName 
+                    LOG_INFO_S << "Transport '" << getName() << "': service signature for '" << receiverName 
                             << "' is '" << location.getSignatureType() << "' but expected '" << mServiceSignaturesTypes[address.protocol] << "' -- will not connect: " << serviceEntry.toString();
                     continue;
                 }
 
-                LOG_DEBUG_S << "Transport: '" << getName() << "' forwarding to other MTS";
+                LOG_DEBUG_S << "Transport: '" << getName() << "': forwarding to other MTS";
                     
                 // Sending message to another MTS
                 std::map<std::string, fipa::services::AbstractOutgoingConnection*>::const_iterator cit = mOutgoingConnections[address.protocol].find(receiverName);
@@ -214,11 +213,11 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                 fipa::services::AbstractOutgoingConnection* mtsConnection = 0;
                 if(cit != mOutgoingConnections[address.protocol].end())
                 {
-                    LOG_DEBUG_S << "Transport: '" << getName() << "' checking on old connections.";
+                    LOG_DEBUG_S << "Transport: '" << getName() << "': checking on old connections.";
                     mtsConnection = cit->second;
                     if(mtsConnection->getAddress() != address)
                     {
-                        LOG_DEBUG_S << "Transport '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() 
+                        LOG_DEBUG_S << "Transport '" << getName() << "': cached connection requires an update " << mtsConnection->getAddress().toString() 
                                     << " vs. " << address.toString() << " -- deleting existing entry";
 
                         delete cit->second;
@@ -232,28 +231,26 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                 if(!connectionExists)
                 {
                     
-                    LOG_DEBUG_S << "Transport: '" << getName() << "' establishing new connection.";
+                    LOG_DEBUG_S << "Transport: '" << getName() << "': establishing new connection.";
                     try {
                         // Switch protocols
                         if(address.protocol == "udt") {
-                            LOG_DEBUG_S << "UDT is the protocol.";
                             mtsConnection = new udt::OutgoingConnection(address);
                         } else if(address.protocol == "tcp") {
-                            LOG_DEBUG_S << "TCP is the protocol.";
                             mtsConnection = new tcp::OutgoingConnection(address);
                         } else {
-                            LOG_WARN_S << "Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
+                            LOG_WARN_S << "Transport '" << getName() << "': Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
                             continue;
                         }
                         mOutgoingConnections[address.protocol][receiverName] = mtsConnection;
                     } catch(const std::exception& e)
                     {
-                        LOG_WARN_S << "Transport '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what();
+                        LOG_WARN_S << "Transport '" << getName() << "': could not establish connection to '" << location.toString() << "' -- " << e.what();
                         continue;
                     }
                 }
 
-                LOG_DEBUG_S << "Transport: '" << getName() << "' : sending letter to '" << receiverName << "'";
+                LOG_DEBUG_S << "Transport: '" << getName() << "': sending letter to '" << receiverName << "'";
                 try {
                     mtsConnection->sendLetter(updatedLetter);
 
@@ -266,7 +263,7 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                     break;
                 } catch(const std::runtime_error& e)
                 {
-                    LOG_WARN_S << "Transport '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what();
+                    LOG_WARN_S << "Transport '" << getName() << "': could not send letter to '" << receiverName << "' -- " << e.what();
                     continue;
                 } 
             }
