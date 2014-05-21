@@ -42,7 +42,6 @@ private:
     boost::asio::ip::tcp::socket mClientSocket;
 };    
 
-// TODO SocketTransport::stopListening
 /**
  * This transport implementation receives messages on a socket and forwards them to ROCK agents. Everything is static.
  */
@@ -53,6 +52,10 @@ public:
      * Starts to listen for new tcp connections. This is done in a new thread.
      */
     static void startListening(fipa::services::message_transport::MessageTransport* mts);
+    /**
+     * Stops listening.
+     */
+    static void stopListening();
     /**
      * Gets the address it is being listened on.
      */
@@ -69,7 +72,7 @@ private:
     static void startAccept();
     /* 
      * Reads from one socket, until the connection is closed by the other side.
-     * All read envelopes are dispatched directly. TODO will this work, as it can happen at the same time?
+     * All read envelopes are dispatched directly.
      * The read method deletes the socket after having finished.
      */
     static void read(boost::asio::ip::tcp::socket* socket);
