@@ -51,37 +51,40 @@ class SocketTransport
 {
 public:
     /**
-     * Starts to listen for new tcp connections. This is done in a new thread.
-     */
-    static void startListening(fipa::services::message_transport::MessageTransport* mts);
-    /**
-     * Stops listening.
-     */
-    static void stopListening();
-    /**
-     * Gets the address it is being listened on.
-     */
-    static fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
-    /**
      * Gets the io_service object used for all operations.
      */
     static boost::asio::io_service& getIOService();
     
+    /**
+     * Constructor
+     */
+    SocketTransport(fipa::services::message_transport::MessageTransport* mts);
+    /**
+     * Starts to listen for new tcp connections. This is done in a new thread.
+     */
+    void startListening();
+    /**
+     * Gets the address it is being listened on.
+     */
+    fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
+    
+    
 private:
+    static boost::asio::io_service io_service;
+    
     // Address and Port
-    static int getPort();
+    int getPort();
     // start accepting new connections, each reading in an own thread
-    static void startAccept();
+    void startAccept();
     /* 
      * Reads from one socket, until the connection is closed by the other side.
      * All read envelopes are dispatched directly.
      * The read method deletes the socket after having finished.
      */
-    static void read(boost::asio::ip::tcp::socket* socket);
+    void read(boost::asio::ip::tcp::socket* socket);
     
-    static boost::asio::io_service io_service;
-    static boost::asio::ip::tcp::acceptor mAcceptor;
-    static fipa::services::message_transport::MessageTransport* mpMts;
+    boost::asio::ip::tcp::acceptor mAcceptor;
+    fipa::services::message_transport::MessageTransport* mpMts;
 };
     
 } // namespace tcp

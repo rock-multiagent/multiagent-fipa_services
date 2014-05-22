@@ -99,12 +99,16 @@ void OutgoingConnection::sendLetter(acl::Letter& letter)
     
 // Class SocketTransport
 boost::asio::io_service SocketTransport::io_service;
-boost::asio::ip::tcp::acceptor SocketTransport::mAcceptor(io_service);
-fipa::services::message_transport::MessageTransport* SocketTransport::mpMts = NULL;
 
 boost::asio::io_service& SocketTransport::getIOService()
 {
     return io_service;
+}
+
+SocketTransport::SocketTransport(fipa::services::message_transport::MessageTransport* mts)
+    : mAcceptor(io_service)
+    , mpMts(mts)
+{
 }
 
 fipa::services::Address SocketTransport::getAddress(const std::string& interfaceName)
@@ -122,33 +126,18 @@ int SocketTransport::getPort()
     return mAcceptor.local_endpoint().port();
 }
 
-void SocketTransport::startListening(fipa::services::message_transport::MessageTransport* mts)
+void SocketTransport::startListening()
 {
-    mpMts = mts;
-    
     try
     {
         mAcceptor.open(boost::asio::ip::tcp::v4()); 
         mAcceptor.listen();
         LOG_INFO_S << "SocketTransport: now listening on " << getAddress().toString();
-        boost::thread t(&SocketTransport::startAccept);
+        boost::thread t(&SocketTransport::startAccept, this);
     }
     catch(std::exception & e)
     {
         LOG_ERROR_S << "SocketTransport: Error startListening: " << e.what();
-    }
-}
-
-void SocketTransport::stopListening()
-{
-    try
-    {
-        LOG_INFO_S << "SocketTransport: stopping to listen.";
-        mAcceptor.close();
-    }
-    catch(std::exception & e)
-    {
-        LOG_ERROR_S << "SocketTransport: Error stopListening: " << e.what();
     }
 }
 
@@ -163,7 +152,7 @@ void SocketTransport::startAccept()
             mAcceptor.accept(*socket);
             LOG_INFO_S << "SocketTransport: New connection accepted. Starting reading thread.";
             // Read in a new thread, and accept blocking again.
-            boost::thread t(&SocketTransport::read, socket);
+            boost::thread t(&SocketTransport::read, this, socket);
         }
     }
     catch(std::exception& e)
@@ -212,10 +201,12 @@ void SocketTransport::read(boost::asio::ip::tcp::socket* socket)
                 {
                     throw std::runtime_error("Parsing the envelope failed.");
                 }
+                LOG_DEBUG_S << "SocketTransport: Parsed envelope";
                 
                 // Get payload length
                 int msgLen = envelope.flattened().getPayloadLength();
                 
+                LOG_DEBUG_S << "SocketTransport: Continue receiveing if message is not fully included.";
                 // Now read until the whole payload is included
                 while(buffer.size() < index + msgLen
                     && (charsRead = socket->read_some(boost::asio::buffer(segment), ec)) != 0)
