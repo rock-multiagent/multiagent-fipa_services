@@ -55,6 +55,7 @@ BOOST_AUTO_TEST_CASE(distributed_service_directory_test)
 
     DistributedServiceDirectory distributedServiceDirectory;
     BOOST_REQUIRE_THROW( distributedServiceDirectory.search(name, ServiceDirectoryEntry::NAME, true), NotFound );
+    // Register 5 Services
     for(int i = 0; i < 5; ++i)
     {
         std::stringstream ss;
@@ -62,13 +63,31 @@ BOOST_AUTO_TEST_CASE(distributed_service_directory_test)
         ServiceDirectoryEntry entry(ss.str(), type, locator, description);
         distributedServiceDirectory.registerService(entry);
     }
-
     sleep(5);
+    
+    // Test they're registered
     for(int i = 0; i < 5; ++i)
     {
         std::stringstream ss;
         ss << "base_" << i;
         BOOST_REQUIRE_NO_THROW( distributedServiceDirectory.search(ss.str(), ServiceDirectoryEntry::NAME, true));
+    }
+    
+    // Deregister them again
+    for(int i = 0; i < 5; ++i)
+    {
+        std::stringstream ss;
+        ss << "base_" << i;
+        distributedServiceDirectory.deregisterService(ss.str(), ServiceDirectoryEntry::NAME);
+    }
+    sleep(10);
+    
+    // Test they're deregistered
+    for(int i = 0; i < 5; ++i)
+    {
+        std::stringstream ss;
+        ss << "base_" << i;
+        BOOST_REQUIRE_THROW( distributedServiceDirectory.search(ss.str(), ServiceDirectoryEntry::NAME, true), NotFound);
     }
 }
 
