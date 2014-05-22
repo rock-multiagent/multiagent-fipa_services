@@ -21,8 +21,8 @@ class OutgoingConnection : public fipa::services::AbstractOutgoingConnection
 {
 public:
     OutgoingConnection();
-    OutgoingConnection(const std::string& ipaddress, uint16_t port);
-    OutgoingConnection(const fipa::services::Address& address);
+    OutgoingConnection(const std::string& ipaddress, uint16_t port, const std::vector<fipa::services::ServiceLocation>& mServiceLocations);
+    OutgoingConnection(const fipa::services::Address& address, const std::vector<fipa::services::ServiceLocation>& mServiceLocations);
 
     /**
      * Connect to ipaddress and port
@@ -40,6 +40,8 @@ public:
     
 private:
     boost::asio::ip::tcp::socket mClientSocket;
+    // The service locations, from which the addresses will be put into 
+    const std::vector<fipa::services::ServiceLocation> mServiceLocations;
 };    
 
 /**

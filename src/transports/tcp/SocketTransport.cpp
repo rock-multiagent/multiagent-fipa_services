@@ -23,16 +23,18 @@ OutgoingConnection::OutgoingConnection()
     : mClientSocket(SocketTransport::getIOService())
 {}
 
-OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t port)
+OutgoingConnection::OutgoingConnection(const std::string& ipaddress, uint16_t port, const std::vector< fipa::services::ServiceLocation >& mServiceLocations)
     : fipa::services::AbstractOutgoingConnection(ipaddress, port)
     , mClientSocket(SocketTransport::getIOService())
+    , mServiceLocations(mServiceLocations)
 {
     connect(ipaddress, port);
 }
 
-OutgoingConnection::OutgoingConnection(const Address& address)
+OutgoingConnection::OutgoingConnection(const fipa::services::Address& address, const std::vector< fipa::services::ServiceLocation >& mServiceLocations)
     : fipa::services::AbstractOutgoingConnection(address)
     , mClientSocket(SocketTransport::getIOService())
+    , mServiceLocations(mServiceLocations)
 {
     connect(address.ip, address.port);
 }
@@ -68,9 +70,12 @@ void OutgoingConnection::sendLetter(acl::Letter& letter)
     fipa::acl::ACLBaseEnvelope extraEnvelope;
     extraEnvelope.setACLRepresentation(fipa::acl::representation::STRING_REP);
     extraEnvelope.setPayloadLength(msgStr.length());
-    // Add sender tcp address
+    // Add sender addresses from the service locations
     fipa::acl::AgentID sender = msg.getSender();
-    sender.addAddress(SocketTransport::getAddress().toString());
+    BOOST_FOREACH(fipa::services::ServiceLocation location, mServiceLocations)
+    {
+        sender.addAddress(location.getServiceAddress());
+    }
     extraEnvelope.setFrom(sender);
     
     letter.addExtraEnvelope(extraEnvelope);

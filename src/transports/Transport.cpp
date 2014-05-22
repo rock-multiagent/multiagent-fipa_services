@@ -237,7 +237,9 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
                         if(address.protocol == "udt") {
                             mtsConnection = new udt::OutgoingConnection(address);
                         } else if(address.protocol == "tcp") {
-                            mtsConnection = new tcp::OutgoingConnection(address);
+                            // TCP needs to know the service locations, to put them as addresses in an extra envelope
+                            // Like this, foreign systems know where to send the response
+                            mtsConnection = new tcp::OutgoingConnection(address, getServiceLocations());
                         } else {
                             LOG_WARN_S << "Transport '" << getName() << "': Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
                             continue;
