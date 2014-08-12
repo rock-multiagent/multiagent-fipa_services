@@ -23,6 +23,23 @@ typedef std::map<message_transport::Type, TransportHandler> TransportHandlerMap;
 typedef std::vector<message_transport::Type> TransportPriorityList;
 
 /**
+ * Struct to configure different transports, i.e. to set a fix listening port.
+ */
+struct MessageTransportConfiguration
+{
+    Type type;
+    uint16_t listening_port;
+    
+    /**
+     * Default values.
+     */
+    MessageTransportConfiguration()
+        : type("")
+        , listening_port(0)
+    {}
+};
+
+/**
  * \class MessageTransport
  * \brief Service responsible for handling FIPA message and managing the forwarding
  *  and relaying
