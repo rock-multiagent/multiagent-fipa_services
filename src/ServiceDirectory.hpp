@@ -28,6 +28,7 @@ protected:
 public:
 
     ServiceDirectory();
+    virtual ~ServiceDirectory() {}
 
     /**
      * Register service

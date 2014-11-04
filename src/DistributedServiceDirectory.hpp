@@ -35,6 +35,11 @@ class DistributedServiceDirectory : public ServiceDirectory
 
 public:
     /**
+     * Destructor
+     */
+    virtual ~DistributedServiceDirectory() {}
+
+    /**
      * Convert a ServiceDirectoryEntry to a avahi description
      * \param entry ServiceDirectoryEntry
      * \return ServiceDescription
