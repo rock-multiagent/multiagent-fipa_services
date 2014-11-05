@@ -116,7 +116,7 @@ fipa::services::Address SocketTransport::getAddress(const std::string& interface
     return Address(Transport::getLocalIPv4Address(interfaceName), getPort(), "tcp");
 }
 
-int SocketTransport::getPort()
+uint16_t SocketTransport::getPort()
 {
     if(!mAcceptor.is_open())
     {
@@ -126,14 +126,17 @@ int SocketTransport::getPort()
     return mAcceptor.local_endpoint().port();
 }
 
-void SocketTransport::startListening()
+void SocketTransport::listen(uint16_t port)
 {
     try
     {
-        mAcceptor.open(boost::asio::ip::tcp::v4()); 
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+        mAcceptor.open(endpoint.protocol());
+        mAcceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+        mAcceptor.bind(endpoint);
         mAcceptor.listen();
-        LOG_INFO_S << "SocketTransport: now listening on " << getAddress().toString();
-        boost::thread t(&SocketTransport::startAccept, this);
+        LOG_INFO_S << "SocketTransport: now listening on port: " << getPort();
+        boost::thread t(&SocketTransport::accept, this);
     }
     catch(std::exception & e)
     {
@@ -141,7 +144,7 @@ void SocketTransport::startListening()
     }
 }
 
-void SocketTransport::startAccept()
+void SocketTransport::accept()
 {
     try
     {

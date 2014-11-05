@@ -59,10 +59,13 @@ public:
      * Constructor
      */
     SocketTransport(fipa::services::message_transport::MessageTransport* mts);
+
     /**
-     * Starts to listen for new tcp connections. This is done in a new thread.
+     * Starts to listen for new tcp connections on a given port.
+     * This is done in a new thread.
      */
-    void startListening();
+    void listen(uint16_t port = 0);
+
     /**
      * Gets the address it is being listened on.
      */
@@ -72,10 +75,14 @@ public:
 private:
     static boost::asio::io_service io_service;
     
-    // Address and Port
-    int getPort();
+    /**
+     * Get port of the listening connection
+     * \return 0 if connection has not been established yet
+     */
+    uint16_t getPort();
+
     // start accepting new connections, each reading in an own thread
-    void startAccept();
+    void accept();
     /* 
      * Reads from one socket, until the connection is closed by the other side.
      * All read envelopes are dispatched directly.
