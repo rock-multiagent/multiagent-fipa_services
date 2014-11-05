@@ -113,7 +113,7 @@ SocketTransport::SocketTransport(fipa::services::message_transport::MessageTrans
 
 fipa::services::Address SocketTransport::getAddress(const std::string& interfaceName)
 {
-    return Address(Transport::getLocalIPv4Address(), getPort(), "tcp");
+    return Address(Transport::getLocalIPv4Address(interfaceName), getPort(), "tcp");
 }
 
 int SocketTransport::getPort()
