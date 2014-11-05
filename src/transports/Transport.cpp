@@ -39,7 +39,7 @@ Address Address::fromString(const std::string& addressString)
         uint16_t port = atoi( std::string(what[3].first, what[3].second).c_str() );
         return Address(address, port, protocol);
     } else {
-        throw std::runtime_error("address '" + addressString + "' malformatted");
+        throw std::invalid_argument("address '" + addressString + "' malformatted");
     }
 }
 
@@ -185,7 +185,14 @@ fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter
             for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
             {
                 ServiceLocation location = *it;
-                Address address = Address::fromString(location.getServiceAddress());
+                Address address;
+                try {
+                    address = Address::fromString(location.getServiceAddress());
+                } catch(const std::invalid_argument& e)
+                {
+                    LOG_WARN_S << "Transport '" << getName() << "' : address '" << location.getServiceAddress() << "' for receiver '" << receiverName << "'";
+                    continue;
+                }
             
                 if (!mOutgoingConnections.count(address.protocol))
                 {

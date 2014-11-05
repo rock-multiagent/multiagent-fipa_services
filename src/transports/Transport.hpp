@@ -33,7 +33,7 @@ struct Address
 
     /**
      * Create address from string
-     * \return ArgumentError if address is malformatted
+     * \return std::invalid_argument if address is malformatted
      */
     static Address fromString(const std::string& address);
 
