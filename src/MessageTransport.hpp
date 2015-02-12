@@ -5,6 +5,8 @@
 #include <fipa_acl/fipa_acl.h>
 #include <boost/function.hpp>
 #include <stdexcept>
+#include <fipa_services/transports/Transport.hpp>
+#include <fipa_services/ServiceDirectory.hpp>
 
 namespace fipa {
 namespace agent_management {
@@ -16,28 +18,11 @@ namespace agent_management {
 namespace services {
 namespace message_transport {
 
-typedef std::string Type;
-// TransportHandler needs to return the remaining list of agents it could not handle
-typedef boost::function1<fipa::acl::AgentIDList, const fipa::acl::Letter&> TransportHandler;
-typedef std::map<message_transport::Type, TransportHandler> TransportHandlerMap;
-typedef std::vector<message_transport::Type> TransportPriorityList;
+/// MessageTransportHandler needs to return success of the delivery
+typedef boost::function2<bool, const std::string&, const fipa::acl::Letter&> MessageTransportHandler;
 
-/**
- * Struct to configure different transports, i.e. to set a fix listening port.
- */
-struct MessageTransportConfiguration
-{
-    Type type;
-    uint16_t listening_port;
-    
-    /**
-     * Default values.
-     */
-    MessageTransportConfiguration()
-        : type("")
-        , listening_port(0)
-    {}
-};
+typedef std::map<std::string, MessageTransportHandler> MessageTransportHandlerMap;
+typedef std::vector<std::string> MessageTransportPriorityList;
 
 /**
  * \class MessageTransport
@@ -48,10 +33,10 @@ struct MessageTransportConfiguration
  * \verbatim
  #include <iostream>
 
- class CustomTransport
+ class CustomMessageTransport
  {
  public:
-     fipa::acl::AgentIDList deliverForwardLetter(const fipa::acl::Letter& letter)
+     bool deliverForwardLetter(const std::string& receiverName, const fipa::acl::Letter& letter)
      {
          fipa::acl::ACLMessage msg = letter.getACLMessage();
          std::cout << msg.getContent() << std::endl;
@@ -67,7 +52,7 @@ struct MessageTransportConfiguration
  using fipa::acl::message_transport;
 
  MessageTransport mts("my-mts");
- mts.registerTransport("default-internal-transport", boost::bind(&CustomTransport::deliverForwardLetter, this, _1));
+ mts.registerMessageTransport("custom-transport", boost::bind(&CustomTransport::deliverForwardLetter, this, _1,_2));
 
  ...
  // Some letter from somewhere, here just manually constructed
@@ -85,13 +70,26 @@ class MessageTransport
 {
 private:
     fipa::acl::AgentID mAgentId;
+    ServiceDirectory::Ptr mpServiceDirectory;
 
-    TransportHandlerMap mTransportHandlerMap;
-    TransportPriorityList mTransportPriorityList;
+    MessageTransportHandlerMap mMessageTransportHandlerMap;
+    MessageTransportPriorityList mMessageTransportPriorityList;
+
+    mutable std::map<transports::Transport::Type, transports::Transport::Ptr> mActiveTransports;
+    std::vector<transports::Configuration> mTransportConfigurations;
+
+    /// The local endpoints of the active transports after activation
+    std::vector<fipa::services::ServiceLocation> mTransportEndpoints;
 
     // Representation which is used to exchange internal messages
     // default is bitefficient
     fipa::acl::representation::Type mRepresentation;
+
+    /// Set of accepted service signatures
+    /// This allow to filter out services that try to
+    /// connect to this special MTS service
+    std::string mServiceSignature;
+    std::set<std::string> mAcceptedServiceSignatures;
 
     /**
      * Stamp message for further delivery,
@@ -111,10 +109,40 @@ private:
     fipa::acl::ACLMessage createInternalErrorMessage(const fipa::acl::ACLMessage& msg, const std::string& description) const;
 
     /**
-     * Forward a letter to the next relay or final recipient
-     * \return list of agents that could not be delivered to
+     * Forward a letter locally using the (custom) registered MessageTransportHandlers
+     * \return true if the delivery suceeded, false otherwise 
      */
-    fipa::acl::AgentIDList forward(fipa::acl::Letter& msg) const;
+    bool localForward(const std::string& receiverName, const fipa::acl::Letter& msg) const;
+
+    /**
+     * Forward a letter using the buildin transports
+     */
+    fipa::acl::AgentIDList forward(const fipa::acl::Letter& letter) const;
+
+    void forward(const std::string& receiverName, const ServiceLocation& location, const fipa::acl::Letter& letter) const;
+
+    /**
+     * Check is the transport that corresponds to the given protocol name has been activated
+     * \return true, if the transport has been activated, false otherwise
+     */
+    bool hasActiveTransport(const std::string& protocol) const;
+
+    /**
+     * Test is this is a local service location, i.e. corresponds to a local
+     * endpoint
+     * \return true if the service is local, false otherwise
+     */
+    bool isLocal(const ServiceLocation& local) const;
+
+    /**
+     * Handle incoming data from the transports
+     */
+    void handleData(const std::string& data);
+
+    /**
+     * Remove a receiver from the a list of receivers
+     */
+    static void removeFromList(const fipa::acl::AgentID& receiver, fipa::acl::AgentIDList& receiversList);
 
 public:
 
@@ -123,7 +151,32 @@ public:
      * \param id Agent id for this message transport
      * for registered agents)
      */
-    MessageTransport(const fipa::acl::AgentID& id);
+    MessageTransport(const fipa::acl::AgentID& id, ServiceDirectory::Ptr serviceDirectory);
+
+    fipa::acl::AgentID getAgentID() const { return mAgentId; }
+
+    void configure(const std::vector<transports::Configuration>& configurations) { mTransportConfigurations = configurations; }
+
+    /**
+     * Activate the given transports
+     */
+    void activateTransports(const std::vector<std::string>& transports);
+
+    void activateTransports(transports::Transport::Type flags);
+
+    void activateTransport(transports::Transport::Type type);
+
+    /**
+     * Get the endpoints of the inbuilt transports
+     */
+    std::vector<fipa::services::ServiceLocation> getTransportEndpoints() const;
+
+    /**
+     * Set the endpoints of the inbuilt transports based on the IP of the given
+     * interface
+     * \throws if the interface cannot be found or is not active
+     */
+    void setTransportEndpoints(const std::string& nic);
 
     /**
      * Handle message, i.e. 
@@ -140,21 +193,22 @@ public:
 
     /**
      * Register a TransportHandler (the order of registration determines the priority)
+     * for local (!) delivery
      * \throw Duplicate
      */
-    void registerTransport(const Type& type, TransportHandler handler);
+    void registerMessageTransport(const std::string& id, MessageTransportHandler handler);
 
     /**
-     * Deregister a TransportHandler
+     * Deregister a MessageTransportHandler
      * \throw Duplicate
      */
-    void deregisterTransport(const Type& type);
+    void deregisterMessageTransport(const std::string& id);
 
     /**
-     * Modify existing TransportHandler
+     * Modify existing MessageTransportHandler
      * \throw Duplicate
      */
-    void modifyTransport(const Type& type, TransportHandler handler);
+    void modifyMessageTransport(const std::string& id, MessageTransportHandler handler);
 
     /**
      * Handle an internal communication, i.e. for exchange of information between two message transport
@@ -174,6 +228,9 @@ public:
      * Get type of the internal message representation
      */
     fipa::acl::representation::Type getInternalMessageRepresentationType() const { return mRepresentation; }
+
+    void trigger();
+
 };
 
 } // end namespace message_transport

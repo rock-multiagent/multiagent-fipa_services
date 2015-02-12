@@ -1,6 +1,7 @@
 #include "Transport.hpp"
 
 #include <base/Logging.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <stdexcept>
 #include <ifaddrs.h>
@@ -67,6 +68,22 @@ Transport::Ptr Transport::create(Type type)
 Transport::Transport(Type type)
     : mType(type)
 {
+}
+
+Transport::Type Transport::getTypeFromTxt(const std::string& type)
+{
+    std::string tmp = type;
+    boost::to_upper(tmp);
+    std::map<Type, std::string>::const_iterator cit = TypeTxt.begin();
+    for(; cit != TypeTxt.end(); ++cit)
+    {
+        if(cit->second == tmp)
+        {
+            return cit->first;
+        }
+    }
+    throw std::invalid_argument("Transport::getTypeFromString: unknown type '" + type + "'");
+
 }
 
 void Transport::registerObserver(TransportObserver observer)

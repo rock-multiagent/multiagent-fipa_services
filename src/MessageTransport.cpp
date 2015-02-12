@@ -5,17 +5,94 @@
 #include <base/Logging.hpp>
 #include <base/Time.hpp>
 
+#include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string.hpp>
+
+#include <fipa_acl/message_generator/envelope_generator.h>
+#include <fipa_acl/message_parser/envelope_parser.h>
 
 namespace fipa {
 namespace services {
 namespace message_transport {
 
-MessageTransport::MessageTransport(const fipa::acl::AgentID& id)
+MessageTransport::MessageTransport(const fipa::acl::AgentID& id, ServiceDirectory::Ptr serviceDirectory)
     : mAgentId(id)
+    , mpServiceDirectory(serviceDirectory)
     , mRepresentation(fipa::acl::representation::BITEFFICIENT)
+    , mServiceSignature("fipa::services::transports::MessageTransport")
 {
+    mAcceptedServiceSignatures.insert(mServiceSignature);
+    mAcceptedServiceSignatures.insert("JadeProxyAgent");
+
+    if(!mpServiceDirectory)
+    {
+        throw std::invalid_argument("MessageTransport: a service directory is required for instanciation");
+    }
 }
+
+void MessageTransport::activateTransports(transports::Transport::Type flags)
+{
+    using namespace fipa::services::transports;
+    for(int i = static_cast<int>(Transport::UDT); i < static_cast<int>(Transport::ALL); ++i)
+    {
+        Transport::Type type = static_cast<Transport::Type>(i);
+        if(flags && type)
+        {
+            activateTransport(type);
+        }
+    }
+}
+
+void MessageTransport::activateTransport(transports::Transport::Type type)
+{
+    transports::Transport::Ptr transport = transports::Transport::create( type );
+    std::string typeTxt = transport->getName();
+
+    // Check if there is a configuration for this transport
+    std::vector<transports::Configuration>::const_iterator configIt = std::find_if(mTransportConfigurations.begin(), mTransportConfigurations.end(), [typeTxt](const transports::Configuration& config) { return config.type == typeTxt; } );
+
+    if(configIt != mTransportConfigurations.end())
+    {
+        transport->start( configIt->listening_port, configIt->maximum_clients );
+    } else {
+        transport->start();
+    }
+
+    transport->registerObserver(boost::bind(&MessageTransport::handleData, this, _1));
+    mActiveTransports[type] = transport;
+}
+
+void MessageTransport::activateTransports(const std::vector<std::string>& transportNames)
+{
+    // Add transports to activation list
+    std::vector<std::string>::const_iterator cit = transportNames.begin();
+    for(; cit != transportNames.end(); ++cit)
+    {
+        transports::Transport::Type type = transports::Transport::getTypeFromTxt(*cit);
+        activateTransport(type);
+    }
+}
+
+std::vector<fipa::services::ServiceLocation> MessageTransport::getTransportEndpoints() const
+{
+    return mTransportEndpoints;
+}
+
+void MessageTransport::setTransportEndpoints(const std::string& nic)
+{
+    std::vector<fipa::services::ServiceLocation> serviceLocations;
+
+    std::map<transports::Transport::Type, transports::Transport::Ptr>::iterator tit = mActiveTransports.begin();
+    for(; tit != mActiveTransports.end(); ++tit)
+    {
+        transports::Transport::Ptr transport = tit->second;
+        serviceLocations.push_back(fipa::services::ServiceLocation(transport->getAddress(nic).toString(), mServiceSignature));
+    }
+
+    mTransportEndpoints = serviceLocations;
+}
+
+
 
 void MessageTransport::handle(fipa::acl::Letter& letter)
 {
@@ -92,48 +169,48 @@ void MessageTransport::handleError(const fipa::acl::Letter& letter) const
     }
 }
 
-void MessageTransport::registerTransport(const message_transport::Type& type, TransportHandler handle)
+void MessageTransport::registerMessageTransport(const std::string& type, MessageTransportHandler handle)
 {
-    if(mTransportHandlerMap.count(type))
+    if(mMessageTransportHandlerMap.count(type))
     {
         throw DuplicateEntry();
     }
 
     // Update priority based on order of insertion
-    TransportPriorityList::const_iterator cit = std::find(mTransportPriorityList.begin(), mTransportPriorityList.end(), type);
-    if(cit == mTransportPriorityList.end())
+    MessageTransportPriorityList::const_iterator cit = std::find(mMessageTransportPriorityList.begin(), mMessageTransportPriorityList.end(), type);
+    if(cit == mMessageTransportPriorityList.end())
     {
-        mTransportPriorityList.push_back(type);
+        mMessageTransportPriorityList.push_back(type);
     }
 
-    mTransportHandlerMap[type] = handle;
+    mMessageTransportHandlerMap[type] = handle;
 }
 
-void MessageTransport::deregisterTransport(const message_transport::Type& type)
+void MessageTransport::deregisterMessageTransport(const std::string& type)
 {
-    TransportHandlerMap::iterator it = mTransportHandlerMap.find(type);
-    if(it == mTransportHandlerMap.end())
+    MessageTransportHandlerMap::iterator it = mMessageTransportHandlerMap.find(type);
+    if(it == mMessageTransportHandlerMap.end())
     {
         throw NotFound("transport type: " + type );
     }
 
     // Remove from priority list
-    TransportPriorityList::iterator cit = std::find(mTransportPriorityList.begin(), mTransportPriorityList.end(), type);
-    assert(cit != mTransportPriorityList.end());
+    MessageTransportPriorityList::iterator cit = std::find(mMessageTransportPriorityList.begin(), mMessageTransportPriorityList.end(), type);
+    assert(cit != mMessageTransportPriorityList.end());
 
-    mTransportPriorityList.erase(cit);
-    mTransportHandlerMap.erase(it);
+    mMessageTransportPriorityList.erase(cit);
+    mMessageTransportHandlerMap.erase(it);
 }
 
-void MessageTransport::modifyTransport(const message_transport::Type& type, TransportHandler handler)
+void MessageTransport::modifyMessageTransport(const std::string& type, MessageTransportHandler handler)
 {
-    TransportHandlerMap::iterator it = mTransportHandlerMap.find(type);
-    if(it == mTransportHandlerMap.end())
+    MessageTransportHandlerMap::iterator it = mMessageTransportHandlerMap.find(type);
+    if(it == mMessageTransportHandlerMap.end())
     {
         throw NotFound("transport type: " + type);
     }
 
-    mTransportHandlerMap[type] = handler;
+    mMessageTransportHandlerMap[type] = handler;
 }
 
 void MessageTransport::stamp(fipa::acl::Letter& letter) const
@@ -166,42 +243,205 @@ fipa::acl::ACLMessage MessageTransport::createInternalErrorMessage(const fipa::a
     errorMsg.setOntology(fipa::agent_management::ONTOLOGY);
     errorMsg.setContent(description);
 
-
     return errorMsg;
 }
 
-fipa::acl::AgentIDList MessageTransport::forward(fipa::acl::Letter& letter) const
+bool MessageTransport::localForward(const std::string& receiverName, const fipa::acl::Letter& letter) const
 {
-    fipa::acl::AgentIDList remainingReceivers = letter.flattened().getIntendedReceivers();
-
-    TransportPriorityList::const_iterator cit = mTransportPriorityList.begin();
-    for(; cit != mTransportPriorityList.end(); ++cit)
+    MessageTransportPriorityList::const_iterator cit = mMessageTransportPriorityList.begin();
+    for(; cit != mMessageTransportPriorityList.end(); ++cit)
     {
-        TransportHandlerMap::const_iterator tit = mTransportHandlerMap.find(*cit);
-        if(tit != mTransportHandlerMap.end())
+        MessageTransportHandlerMap::const_iterator tit = mMessageTransportHandlerMap.find(*cit);
+        if(tit != mMessageTransportHandlerMap.end())
         {
-            TransportHandler transportHandler = tit->second;
-            remainingReceivers = transportHandler(letter);
-
-            if(!remainingReceivers.empty())
+            MessageTransportHandler transportHandler = tit->second;
+            if( transportHandler(receiverName, letter) )
             {
-                fipa::acl::ACLBaseEnvelope extraEnvelope;
-                extraEnvelope.setIntendedReceivers(remainingReceivers);
-                letter.addExtraEnvelope(extraEnvelope);
-            } else {
-                LOG_DEBUG("Delivered successfully to all agents");
-                break;
+                LOG_DEBUG_S << "Delivered successfully to '" << receiverName << "'";
+                return true;
             }
         }
     }
+    return false;
+}
 
-    fipa::acl::AgentIDList::const_iterator ait = remainingReceivers.begin();
-    for(; ait != remainingReceivers.end(); ++ait)
+fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter) const
+{
+    using namespace fipa::acl;
+
+    // Get access to the base envelope
+    ACLBaseEnvelope envelope = letter.flattened();
+    // Get the list of intended receivers
+    AgentIDList receivers = envelope.getIntendedReceivers();
+    LOG_DEBUG_S << "Intended receivers: " << receivers;
+    AgentIDList::const_iterator rit = receivers.begin();
+
+    // The list of remaining receivers -- e.g. if a transport failed
+    AgentIDList remainingReceivers = receivers;
+
+    // For each intended receiver try to deliver
+    // Try to forward to a receiver using the information given in the service
+    // directory, i.e. using the locators of this service, which is an MTS in this context
+    for(; rit != receivers.end(); ++rit)
     {
-        LOG_DEBUG("Could not forward letter (with any available transport) to: '%s'", ait->getName().c_str());
-    }
+        LOG_DEBUG_S << "MessageTransport '" << mAgentId.getName() << "': deliverOrForwardLetter to: " << rit->getName();
+
+        // Handle delivery
+        // The name of the next destination -- this next destination can also be an intermediate receiver
+        std::string receiverName = rit->getName();
+        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
+
+        // Check for local receivers, or identify locator
+        bool doThrow = false;
+        fipa::services::ServiceDirectoryList list = mpServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, doThrow);
+        if(list.empty())
+        {
+            // Try local delivery
+            if(localForward(receiverName, letter))
+            {
+                removeFromList(*rit, remainingReceivers);
+                break;
+            } else {
+                LOG_WARN_S << "MessageTransport '" << mAgentId.getName() << "': could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown";
+            }
+
+            // Iterate over the list of builtin transports and cleanup the cache
+            std::map<transports::Transport::Type, transports::Transport::Ptr>::iterator it = mActiveTransports.begin();
+            for(; it != mActiveTransports.end(); ++it)
+            {
+                it->second->cleanup(receiverName);
+            }
+            continue;
+        } else if(list.size() > 1) {
+            LOG_WARN_S << "MessageTransport '" << mAgentId.getName() << "': receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate";
+        } else {
+            using namespace fipa::services;
+
+            // Extract the service locations and try to communicate via the given protocols (which correspond to a transport)
+            ServiceDirectoryEntry serviceEntry = list.front();
+
+            ServiceLocator locator = serviceEntry.getLocator();
+            ServiceLocations locations = locator.getLocations();
+            for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
+            {
+                // Retrieve address
+                ServiceLocation location = *it;
+
+                try{
+                    forward(receiverName, location, updatedLetter);
+                    removeFromList(*rit, remainingReceivers);
+
+                    // Successfully sent. Break locations loop.
+                    break;
+
+                } catch(const std::runtime_error& e)
+                {
+                    LOG_WARN_S << "MessageTransport: '" << mAgentId.getName() << ": could not send letter to '" << receiverName << "' -- via location: " << location.toString() << " " << e.what();
+                    continue;
+                }
+
+            } // end for
+        } // end else
+    } // end for receivers
 
     return remainingReceivers;
+}
+
+bool MessageTransport::hasActiveTransport(const std::string& protocol) const
+{
+    transports::Transport::Type type = transports::Transport::getTypeFromTxt(protocol);
+    return mActiveTransports.end() != mActiveTransports.find(type);
+}
+
+bool MessageTransport::isLocal(const ServiceLocation& local) const
+{
+    return mTransportEndpoints.end() != std::find(mTransportEndpoints.begin(), mTransportEndpoints.end(), local);
+}
+
+void MessageTransport::handleData(const std::string& data)
+{
+    LOG_DEBUG_S << mAgentId.getName() << " received data ";
+
+    fipa::acl::Letter letter;
+    if( fipa::acl::EnvelopeParser::parseData(data, letter, fipa::acl::representation::BITEFFICIENT) )
+    {
+
+        LOG_DEBUG_S << mAgentId.getName() << " forward envelope to handler";
+        handle(letter);
+    } else {
+        LOG_WARN_S << mAgentId.getName() << " could not process data: check for correct representation";
+    }
+}
+
+
+void MessageTransport::forward(const std::string& receiverName, const ServiceLocation& location, const fipa::acl::Letter& letter) const
+{
+    transports::Address address;
+    try {
+        address = transports::Address::fromString(location.getServiceAddress());
+    } catch(const std::invalid_argument& e)
+    {
+        throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "' : address '" + location.getServiceAddress() + "' for receiver '" + receiverName + "'");
+    }
+
+    // Check if the destination is a local address
+    if(isLocal(location))
+    {
+        if(!localForward(receiverName, letter))
+        {
+            throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "': could not forward to receiver: '" + receiverName + "' -- local delivery failed");
+        }
+    } else {
+        // Check if the transport that corresponds to the protocol is allowed
+        if(!hasActiveTransport(address.protocol))
+        {
+            // Protocol not implemented (or not activated)
+            throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "' : transport protocol '" + address.protocol + "' is not active or supported.");
+        }
+
+        // Check if the service signature matches
+        if( mAcceptedServiceSignatures.end() == std::find( mAcceptedServiceSignatures.begin(), mAcceptedServiceSignatures.end(), location.getSignatureType()))
+        {
+            throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "': service signature for '" + receiverName + "' is '" + location.getSignatureType() + "' and is not on the list of accepted signatures -- will not connect to: " + location.toString());
+        }
+
+        transports::Transport::Type type = transports::Transport::getTypeFromTxt(address.protocol);
+        std::map<transports::Transport::Type, transports::Transport::Ptr>::iterator tit = mActiveTransports.find(type);
+        if( tit != mActiveTransports.end() )
+        {
+            transports::Transport::Ptr transport = tit->second;
+            LOG_DEBUG_S << "MessageTransport: '" << transport->getName() << "': forwarding to other MTS";
+
+            std::string data = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::BITEFFICIENT);
+
+            // Try sending via given transport
+            // will throw on failure
+            transport->send(receiverName, address, data);
+        }
+    } // end else
+}
+
+
+void MessageTransport::removeFromList(const fipa::acl::AgentID& agent, fipa::acl::AgentIDList& agents)
+{
+    // Sucessfully send, remove from list of remaining
+    // receivers
+    fipa::acl::AgentIDList::iterator it = std::find(agents.begin(), agents.end(), agent);
+    if(it != agents.end())
+    {
+        agents.erase(it);
+    }
+}
+
+void MessageTransport::trigger()
+{
+    using namespace fipa::services::transports;
+    std::map<Transport::Type, Transport::Ptr>::iterator it = mActiveTransports.begin();
+    for(; it != mActiveTransports.end(); ++it)
+    {
+        Transport::Ptr transport = it->second;
+        transport->update();
+    }
 }
 
 } // end namespace message_transport

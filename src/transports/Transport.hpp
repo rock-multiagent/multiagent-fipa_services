@@ -46,6 +46,11 @@ public:
     static Transport::Ptr create(Type type);
 
     /**
+     * Retrieve the type for a given string
+     */
+    static Type getTypeFromTxt(const std::string& typeTxt);
+
+    /**
      * Register a callback function that is called via 
      * notify when new data arrives
      */
@@ -83,11 +88,6 @@ public:
      * \return address of this transport for a given interface
      */
     virtual Address getAddress(const std::string& interface = "eth0") const { throw std::runtime_error("fipa::services::Transport::getAddress not implemented by transport: " + getName()); }
-
-    /**
-     * Send function that has to be implemented by specific transport
-     */
-    virtual void send(const std::string& data) { throw std::runtime_error("fipa::services::Transport::send not implemented by transport: " + getName()); }
 
     /**
      * Establish outgoing connection
@@ -130,6 +130,28 @@ private:
     /// value: connection to this receiver
     std::map<std::string, OutgoingConnection::Ptr> mOutgoingConnections;
 };
+
+
+/**
+ * Struct to configure different transports, i.e. to set a fix listening port.
+ */
+struct Configuration
+{
+    std::string type;
+    uint16_t listening_port;
+    uint32_t maximum_clients;
+    
+    /**
+     * Default values.
+     */
+    Configuration()
+        : type("UNKNOWN")
+        , listening_port(0)
+        , maximum_clients(50)
+    {}
+};
+
+
 
 } // end namespace transports
 } // end namespace services
