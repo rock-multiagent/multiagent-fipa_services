@@ -49,7 +49,7 @@ void MessageTransport::activateTransport(transports::Transport::Type type)
     std::string typeTxt = transport->getName();
 
     // Check if there is a configuration for this transport
-    std::vector<transports::Configuration>::const_iterator configIt = std::find_if(mTransportConfigurations.begin(), mTransportConfigurations.end(), [typeTxt](const transports::Configuration& config) { return config.type == typeTxt; } );
+    std::vector<transports::Configuration>::const_iterator configIt = std::find_if(mTransportConfigurations.begin(), mTransportConfigurations.end(), [typeTxt](const transports::Configuration& config) { return config.transport_type == typeTxt; } );
 
     if(configIt != mTransportConfigurations.end())
     {

@@ -131,28 +131,6 @@ private:
     std::map<std::string, OutgoingConnection::Ptr> mOutgoingConnections;
 };
 
-
-/**
- * Struct to configure different transports, i.e. to set a fix listening port.
- */
-struct Configuration
-{
-    std::string type;
-    uint16_t listening_port;
-    uint32_t maximum_clients;
-    
-    /**
-     * Default values.
-     */
-    Configuration()
-        : type("UNKNOWN")
-        , listening_port(0)
-        , maximum_clients(50)
-    {}
-};
-
-
-
 } // end namespace transports
 } // end namespace services
 } // end namespace fipa

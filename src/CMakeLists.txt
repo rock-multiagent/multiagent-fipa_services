@@ -23,6 +23,7 @@ rock_library(fipa_services
         ServiceDirectory.hpp
         ServiceLocator.hpp
         transports/Address.hpp
+        transports/Configuration.hpp
         transports/Connection.hpp
         transports/OutgoingConnection.hpp
         transports/Transport.hpp

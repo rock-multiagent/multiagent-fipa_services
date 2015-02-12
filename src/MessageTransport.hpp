@@ -6,6 +6,7 @@
 #include <boost/function.hpp>
 #include <stdexcept>
 #include <fipa_services/transports/Transport.hpp>
+#include <fipa_services/transports/Configuration.hpp>
 #include <fipa_services/ServiceDirectory.hpp>
 
 namespace fipa {
@@ -230,6 +231,12 @@ public:
     fipa::acl::representation::Type getInternalMessageRepresentationType() const { return mRepresentation; }
 
     void trigger();
+
+    std::string getServiceSignature() const { return mServiceSignature; }
+
+    void addAcceptedServiceSignature(const std::string& signature) { mAcceptedServiceSignatures.insert(signature); }
+
+    ServiceDirectory::Ptr getServiceDirectory() { return mpServiceDirectory; }
 
 };
 
