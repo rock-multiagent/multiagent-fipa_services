@@ -2,6 +2,7 @@
 #include "ServiceDirectoryEntry.hpp"
 #include <boost/regex.hpp>
 #include "ErrorHandling.hpp"
+#include <base/Logging.hpp>
 
 namespace fipa {
 namespace services {
@@ -14,6 +15,7 @@ ServiceDirectory::ServiceDirectory()
 void ServiceDirectory::registerService(const ServiceDirectoryEntry& entry)
 {
     boost::unique_lock<boost::mutex> lock(mMutex);
+    LOG_DEBUG_S << "Register service: " << entry.toString();
     mServices[entry.getName()] = entry;
     updateTimestamp();
 }
