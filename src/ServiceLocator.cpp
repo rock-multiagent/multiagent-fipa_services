@@ -3,6 +3,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
 
+#include <fipa_services/transports/Transport.hpp>
+
 namespace fipa {
 namespace services {
 
@@ -40,8 +42,9 @@ ServiceLocation ServiceLocation::fromString(const std::string& locationString)
             location.mSignatureType = fieldTokens[1];
         case 1:
             location.mServiceAddress = fieldTokens[0];
-        default:
             break;
+        default:
+            throw std::invalid_argument("ServiceLocation::fromString could not parse ServiceLocation from '" + locationString + "'");
     }
 
     return location;
@@ -50,6 +53,11 @@ ServiceLocation ServiceLocation::fromString(const std::string& locationString)
 bool ServiceLocation::operator==(const fipa::services::ServiceLocation& other) const
 {
     return mServiceAddress == other.mServiceAddress && mServiceSignature == other.mServiceSignature && mSignatureType == other.mSignatureType;
+}
+
+std::string ServiceLocation::getProtocol() const
+{
+    return transports::Address::fromString(mServiceAddress).protocol;
 }
 
 void ServiceLocator::updateFromString(const std::string& locations)

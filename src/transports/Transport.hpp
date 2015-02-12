@@ -1,145 +1,137 @@
 #ifndef FIPA_SERVICES_TRANSPORTS_TRANSPORT_HPP
 #define FIPA_SERVICES_TRANSPORTS_TRANSPORT_HPP
 
-#include <string>
-#include <stdint.h>
+#include <map>
 #include <fipa_acl/fipa_acl.h>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_services/ServiceLocator.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <fipa_services/transports/udt/OutgoingConnection.hpp>
 
 namespace fipa {
-namespace services {    
-/**
- * \class Address
- * \brief Communication address specified by ip,  port, and protocol
- */
-struct Address
-{
-    std::string ip;
-    uint16_t port;
-    std::string protocol;
+namespace services {
+namespace transports {
 
-    Address() {}
-
-    // Default protocol is udt.
-    Address(const std::string& ip, uint16_t port, const std::string& protocol = "udt");
-
-    /**
-     * Convert address to string
-     * \return Address as string
-     */
-    std::string toString() const;
-
-    /**
-     * Create address from string
-     * \return std::invalid_argument if address is malformatted
-     */
-    static Address fromString(const std::string& address);
-
-    /**
-     * Equals operator
-     * \return True if equal, false otherwise
-     */
-    bool operator==(const Address& other) const;
-
-    bool operator!=(const Address& other) const { return !this->operator==(other); }
-};
-
-/**
- * \class Connection
- * \brief A connection is defined by a communication address
- * \see Address
- */
-class Connection
-{
-protected:
-    Address mAddress;
-public:
-    Connection();
-    Connection(const std::string& ip, uint16_t port, const std::string& protocol = "udt");
-    Connection(const Address& address);
-
-    uint16_t getPort() const { return mAddress.port; }
-    std::string getIP() const { return mAddress.ip; }
-
-    Address getAddress() const { return mAddress; }
-
-    bool operator==(const Connection& other) const { return mAddress == other.mAddress; }
-};
-
-/**
- * \class AbstractOutgoingConnection
- * \brief A unidirectional, outgoing connection that allows to send fipa letters to a receiver
- */
-class AbstractOutgoingConnection : public fipa::services::Connection
-{
-public:
-    AbstractOutgoingConnection();
-    AbstractOutgoingConnection(const std::string& ipaddress, uint16_t port);
-    AbstractOutgoingConnection(const fipa::services::Address& address);
-    virtual ~AbstractOutgoingConnection() {};
-    
-    /**
-     * Connect to ipaddress and port
-     * \param ipaddress IP as string
-     * \param port Port number
-     * \throws if connection cannot be established
-     */
-    virtual void connect(const std::string& ipaddress, uint16_t port) = 0;
-
-    /**
-     * Send fipa::acl::Letter
-     * \param letter FIPA letter
-     */
-    virtual void sendLetter(fipa::acl::Letter& letter) = 0;
-};
+/// Allow to register callbacks with a transport once data arrives
+typedef boost::function1<void, const std::string&> TransportObserver;
 
 /**
  * \class Transport
- * \brief Connection management base class. Supports udt and tcp.
- * Also static method collection facilitating transport implementations.
+ * \brief Connection management base class
  */
 class Transport
 {
 public:
-    Transport(const std::string& name, DistributedServiceDirectory* dsd, const std::vector<fipa::services::ServiceLocation> mServiceLocations);
-    
+    /// Builtin transport types that can be activated
+    enum Type { UNKNOWN = 0x00, UDT = 0x01, TCP = 0x02, ALL = 0xFF };
+
+    static std::map<Type, std::string> TypeTxt;
+
+private:
+    Type mType; 
+    std::vector<TransportObserver> mObservers;
+
+    Transport() {}
+
+protected:
+    Transport(Type type);
+
+public:
+    typedef boost::shared_ptr<Transport> Ptr;
+
+    /**
+     * Create a transport of the given type
+     * \return TransportType
+     */
+    static Transport::Ptr create(Type type);
+
+    /**
+     * Register a callback function that is called via 
+     * notify when new data arrives
+     */
+    void registerObserver(TransportObserver observer);
+
+    /**
+     * Get the type of this transport
+     * \return type of this transport
+     */
+    Type getType() const { return mType; }
+
+    /**
+     * Get transport name
+     */
+    std::string getName() const { return Transport::TypeTxt[mType]; }
+
     /**
      * Get local IPv4 address for a given interface
      * \param interfaceName name of the interface, default is eth0
      * \return address as a string
      */
     static std::string getLocalIPv4Address(const std::string& interfaceName = "eth0");
-    
+
     /**
-     * Forwards a letter via UDT.
-     * \param letter enenvelope
-     * \return list of agents for which the delivery failed
+     * Send the encoded data
+     * \param receiverName name of the receiver to which the data should be sent
+     * \param address Address to which the data should be sent
+     * \param data Data that should be send to the receiver 
+     * \throws std::runtime_error if sending failed
      */
-    fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
-    
-    // The name of the MessageTransportTask using this.
-    const std::string& getName() const {return name; }
-    
-    const std::vector<fipa::services::ServiceLocation> getServiceLocations() const;
-    
+    void send(const std::string& receiverName, const Address& address, const std::string& data);
+
+    /**
+     * Get address for this transport and for the given interface
+     * \return address of this transport for a given interface
+     */
+    virtual Address getAddress(const std::string& interface = "eth0") const { throw std::runtime_error("fipa::services::Transport::getAddress not implemented by transport: " + getName()); }
+
+    /**
+     * Send function that has to be implemented by specific transport
+     */
+    virtual void send(const std::string& data) { throw std::runtime_error("fipa::services::Transport::send not implemented by transport: " + getName()); }
+
+    /**
+     * Establish outgoing connection
+     * This has to be implement by specific transport
+     */
+    virtual OutgoingConnection::Ptr establishOutgoingConnection(const Address& address) { throw std::runtime_error("fipa::services::Transport::establishOutgoingConnection not implemented by transport: " + getName()); }
+
+    /**
+     * Start transport functionality, e.g. listen socket etc.
+     */
+    virtual void start(uint16_t port = 0, uint32_t maxClients = 50) { throw std::runtime_error("fipa::services::Transport::start not implemented by transport: " + getName()); }
+
+    /**
+     * Update transport, e.g. accept new connections and read existing
+     */
+    virtual void update(bool readAllMessages = true) { throw std::runtime_error("fipa::services::transports::Transport::update not implemented by transport: " + getName()); }
+
+    /**
+     * Retrieve and outgoing connection from cache
+     * \param receiverName Name of the receiver
+     * \param address Address that should correspond to the receiver
+     * \return NULL if connection does not exist or is invalid (e.g. when
+     * addresses are different)
+     */
+    OutgoingConnection::Ptr getCachedOutgoingConnection(const std::string& receiverName, const Address& address);
+
+    /**
+     * Cleanup the receiver from the outgoing connection list
+     */
+    void cleanup(const std::string& receiver);
+
+    /**
+     * Trigger callbacks upon a newly arrived message
+     */
+    void notify(const std::string& message);
+
 private:
-    static std::vector<std::string> additionalAcceptedSignatureTypes;
-    
-    std::string getProtocolOfServiceLocation(const fipa::services::ServiceLocation& location);
-    
-    std::string name;
-    DistributedServiceDirectory* mpDSD;
-    // Service locations (for each protocol).
-    std::vector<fipa::services::ServiceLocation> mServiceLocations;
-    // Outgoing connections for each protocol
-    std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> > mOutgoingConnections;
-    // Mapping the ServiceTypeSignatures to their protocols
-    std::map<std::string, std::string> mServiceSignaturesTypes;
-    
+    /// Outgoing connections for the given transport
+    /// key: receiver name
+    /// value: connection to this receiver
+    std::map<std::string, OutgoingConnection::Ptr> mOutgoingConnections;
 };
 
+} // end namespace transports
 } // end namespace services
 } // end namespace fipa
 #endif // FIPA_SERVICES_TRANSPORTS_TRANSPORT_HPP

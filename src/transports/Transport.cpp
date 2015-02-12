@@ -6,78 +6,20 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-#include <boost/regex.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/assign.hpp>
 #include <boost/foreach.hpp>
 #include <fipa_services/transports/udt/UDTTransport.hpp>
-#include <fipa_services/transports/tcp/SocketTransport.hpp>
+// #include <fipa_services/transports/tcp/TCPTransport.hpp>
 
 namespace fipa {
 namespace services {
+namespace transports {
 
-// Address
-Address::Address(const std::string& ip, uint16_t port, const std::string& protocol)
-    : ip(ip)
-    , port(port)
-    , protocol(protocol)
-{}
-
-std::string Address::toString() const
-{
-    return protocol + "://" + ip + ":" + boost::lexical_cast<std::string>(port);
-}
-
-Address Address::fromString(const std::string& addressString)
-{
-    boost::regex r("([^:]*)://([^:]*):([0-9]{1,5})"); 
-    boost::smatch what;
-    if(boost::regex_match(addressString, what, r))
-    {
-        std::string protocol(what[1].first, what[1].second);
-        std::string address(what[2].first, what[2].second);
-        uint16_t port = atoi( std::string(what[3].first, what[3].second).c_str() );
-        return Address(address, port, protocol);
-    } else {
-        throw std::invalid_argument("address '" + addressString + "' malformatted");
-    }
-}
-
-bool Address::operator==(const Address& other) const
-{
-    return this->ip == other.ip && this->port == other.port;
-}
-
-// Connection
-Connection::Connection()
-    : mAddress("0.0.0.0", 0)
-{}
-
-Connection::Connection(const std::string& ip, uint16_t port, const std::string& protocol)
-    : mAddress(ip, port, protocol)
-{}
-
-Connection::Connection(const Address& address)
-    : mAddress(address)
-{}
-
-// AbstractOutgoingConnection
-AbstractOutgoingConnection::AbstractOutgoingConnection()
-{}
-
-AbstractOutgoingConnection::AbstractOutgoingConnection(const std::string& ipaddress, uint16_t port)
-    : Connection(ipaddress, port)
-{
-}
-
-AbstractOutgoingConnection::AbstractOutgoingConnection(const Address& address)
-    : Connection(address)
-{
-}
-
-// Transport
-std::vector<std::string> Transport::additionalAcceptedSignatureTypes = boost::assign::list_of
-    ("JadeProxyAgent");
+std::map<Transport::Type, std::string> Transport::TypeTxt = boost::assign::map_list_of
+    (Transport::UNKNOWN, "UNKNOWN")
+    (Transport::UDT, "UDT")
+    (Transport::TCP, "TCP")
+    (Transport::ALL, "ALL");
 
 std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
 {
@@ -91,7 +33,7 @@ std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
             if(interface->ifa_addr->sa_family == AF_INET)
             {
                 // Match
-                if(interfaceName == std::string(interface->ifa_name))
+                if(interfaceName == std::string(interface->ifa_name) || interfaceName.empty())
                 {
                     struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
                     char* addr = inet_ntoa(sa->sin_addr);
@@ -109,178 +51,106 @@ std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
     throw std::runtime_error("fipa::services::Transport: could not get interface address of '" + interfaceName + "'");
 }
 
-Transport::Transport(const std::string& name, fipa::services::DistributedServiceDirectory* dsd, const std::vector<fipa::services::ServiceLocation> mServiceLocations)
-    : mpDSD(dsd)
-    , mServiceLocations(mServiceLocations)
-    , name(name)
+Transport::Ptr Transport::create(Type type)
 {
-    // Create a map of outgoing connections for each protocol that is to be used.
-    // Also save the service signature types
-    BOOST_FOREACH(fipa::services::ServiceLocation location, mServiceLocations)
+    switch(type)
     {
-        std::string protocol = getProtocolOfServiceLocation(location);
-        mOutgoingConnections[protocol] = std::map<std::string, fipa::services::AbstractOutgoingConnection*>();
-        mServiceSignaturesTypes[protocol] = location.getSignatureType();
-    }  
+        case UDT:
+            return Transport::Ptr(new udt::UDTTransport());
+        case TCP:
+            //return Transport::Ptr(new tcp::TCPTransport());
+        default:
+            throw std::invalid_argument("fipa::services::Transport cannot create transport of type" + TypeTxt[type]);
+    }
 }
 
-std::string Transport::getProtocolOfServiceLocation(const ServiceLocation& location)
+Transport::Transport(Type type)
+    : mType(type)
 {
-    return Address::fromString(location.getServiceAddress()).protocol;
 }
 
-const std::vector<fipa::services::ServiceLocation> Transport::getServiceLocations() const
+void Transport::registerObserver(TransportObserver observer)
 {
-    return mServiceLocations;
+    mObservers.push_back(observer);
 }
 
-fipa::acl::AgentIDList Transport::deliverOrForwardLetter(const fipa::acl::Letter& letter)
+void Transport::notify(const std::string& data)
 {
-    using namespace fipa::acl;
-
-    ACLBaseEnvelope envelope = letter.flattened();
-    AgentIDList receivers = envelope.getIntendedReceivers();
-    AgentIDList::const_iterator rit = receivers.begin();
-
-    AgentIDList remainingReceivers = receivers;
-
-    // For each intended receiver, try to deliver.
-    // If it is a local client, deliver locally, otherwise forward to the known locator, which is an MTS in this context
-    for(; rit != receivers.end(); ++rit)
+    std::vector<TransportObserver>::iterator it = mObservers.begin();
+    for(; it != mObservers.end(); ++it)
     {
-        LOG_DEBUG_S << "Transport '" << getName() << "': deliverOrForwardLetter to: " << rit->getName();
+        TransportObserver notifyHandle = *it;
+        // trigger notification
+        notifyHandle(data);
+    }
+}
 
-        // Handle delivery
-        // The name of the next destination, can be an intermediate receiver
-        std::string receiverName = rit->getName();
-        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
+OutgoingConnection::Ptr Transport::getCachedOutgoingConnection(const std::string& receiverName, const Address& address)
+{
+    std::map<std::string, OutgoingConnection::Ptr>::const_iterator cit = mOutgoingConnections.find(receiverName);
 
-        // Check for local receivers, or identify locator
-        fipa::services::ServiceDirectoryList list = mpDSD->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
-        if(list.empty())
+    OutgoingConnection::Ptr connection;
+
+    if(cit != mOutgoingConnections.end())
+    {
+        LOG_DEBUG_S << "Transport: '" << getName() << "': checking on cached connection.";
+        connection = cit->second;
+        if(connection->getAddress() != address)
         {
-            LOG_WARN_S << "Transport '" << getName() << "': could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown";
+            LOG_DEBUG_S << "Transport '" << getName() << "': cached connection requires an update " << connection->getAddress().toString() 
+                        << " vs. " << address.toString() << " -- deleting existing entry";
+            mOutgoingConnections.erase(receiverName);
+        }  else {
+            return connection;
+        }
+    }
+    // Return nullptr
+    return OutgoingConnection::Ptr();
+}
+void Transport::send(const std::string& receiverName, const Address& address, const std::string& data)
+{
+    // Validate connection by comparing address in cache and current address in service directory
+    OutgoingConnection::Ptr connection = getCachedOutgoingConnection(receiverName, address);
 
-            // Cleanup existing entries
-            for(std::map<std::string, std::map<std::string, fipa::services::AbstractOutgoingConnection*> >::iterator it = mOutgoingConnections.begin();
-                it != mOutgoingConnections.end(); it++)
-            {
-                std::map<std::string, fipa::services::AbstractOutgoingConnection*>::iterator it2 = it->second.find(receiverName);
-                if(it2 != it->second.end())
-                {
-                    delete it2->second;
-                    it->second.erase(it2++);
-                }
-            }
-            continue;
-        } else if(list.size() > 1) {
-            LOG_WARN_S << "Transport '" << getName() << "': receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate";
-        } else {
-            using namespace fipa::services;
-            // Extract the service location
-            ServiceDirectoryEntry serviceEntry = list.front();
-            ServiceLocator locator = serviceEntry.getLocator();
-            ServiceLocations locations = locator.getLocations();
-            
-            for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
-            {
-                ServiceLocation location = *it;
-                Address address;
-                try {
-                    address = Address::fromString(location.getServiceAddress());
-                } catch(const std::invalid_argument& e)
-                {
-                    LOG_WARN_S << "Transport '" << getName() << "' : address '" << location.getServiceAddress() << "' for receiver '" << receiverName << "'";
-                    continue;
-                }
-            
-                if (!mOutgoingConnections.count(address.protocol))
-                {
-                    // Protocol not implemented (or activated)
-                    LOG_WARN_S << "Transport '" << getName() << "' : protocol '" << address.protocol << "' is not supported.";
-                    continue;
-                }
+    // Connection does not exist, create and 
+    // cache new connection
+    if(!connection)
+    {
+        LOG_DEBUG_S << "Transport: '" << getName() << "': establishing new connection.";
+        try {
+            connection = establishOutgoingConnection(address);
 
-                if( location.getSignatureType() != mServiceSignaturesTypes[address.protocol]
-                    && std::find(additionalAcceptedSignatureTypes.begin(), additionalAcceptedSignatureTypes.end(), location.getSignatureType()) == additionalAcceptedSignatureTypes.end() )
-                {
-                    LOG_INFO_S << "Transport '" << getName() << "': service signature for '" << receiverName 
-                            << "' is '" << location.getSignatureType() << "' but expected '" << mServiceSignaturesTypes[address.protocol] << "' -- will not connect: " << serviceEntry.toString();
-                    continue;
-                }
-
-                LOG_DEBUG_S << "Transport: '" << getName() << "': forwarding to other MTS";
-                    
-                // Sending message to another MTS
-                std::map<std::string, fipa::services::AbstractOutgoingConnection*>::const_iterator cit = mOutgoingConnections[address.protocol].find(receiverName);
-
-                bool connectionExists = false;
-                // Validate connection by comparing address in cache and current address in service directory
-                
-                fipa::services::AbstractOutgoingConnection* mtsConnection = 0;
-                if(cit != mOutgoingConnections[address.protocol].end())
-                {
-                    LOG_DEBUG_S << "Transport: '" << getName() << "': checking on old connections.";
-                    mtsConnection = cit->second;
-                    if(mtsConnection->getAddress() != address)
-                    {
-                        LOG_DEBUG_S << "Transport '" << getName() << "': cached connection requires an update " << mtsConnection->getAddress().toString() 
-                                    << " vs. " << address.toString() << " -- deleting existing entry";
-
-                        delete cit->second;
-                        mOutgoingConnections[address.protocol].erase(receiverName);
-                    } else {
-                        connectionExists = true;
-                    }
-                }
-
-                // Cache newly created connection
-                if(!connectionExists)
-                {
-                    
-                    LOG_DEBUG_S << "Transport: '" << getName() << "': establishing new connection.";
-                    try {
-                        // Switch protocols
-                        if(address.protocol == "udt") {
-                            mtsConnection = new udt::OutgoingConnection(address);
-                        } else if(address.protocol == "tcp") {
-                            // TCP needs to know the service locations, to put them as addresses in an extra envelope
-                            // Like this, foreign systems know where to send the response
-                            mtsConnection = new tcp::OutgoingConnection(address, getServiceLocations());
-                        } else {
-                            LOG_WARN_S << "Transport '" << getName() << "': Don't know how to create a " << address.protocol << " connection. Protocol not implemented.";
-                            continue;
-                        }
-                        mOutgoingConnections[address.protocol][receiverName] = mtsConnection;
-                    } catch(const std::exception& e)
-                    {
-                        LOG_WARN_S << "Transport '" << getName() << "': could not establish connection to '" << location.toString() << "' -- " << e.what();
-                        continue;
-                    }
-                }
-
-                LOG_DEBUG_S << "Transport: '" << getName() << "': sending letter to '" << receiverName << "'";
-                try {
-                    mtsConnection->sendLetter(updatedLetter);
-
-                    fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit);
-                    if(it != remainingReceivers.end())
-                    {
-                        remainingReceivers.erase(it);
-                    }
-                    // Successfully sent. Break locations loop.
-                    break;
-                } catch(const std::runtime_error& e)
-                {
-                    LOG_WARN_S << "Transport '" << getName() << "': could not send letter to '" << receiverName << "' -- " << e.what();
-                    continue;
-                } 
-            }
+            // cache connection
+            mOutgoingConnections[receiverName] = connection;
+        } catch(const std::exception& e)
+        {
+           throw std::runtime_error("Transport '" + getName() + "': could not establish connection to '" + address.toString() + "' -- " + e.what());
         }
     }
 
-    return remainingReceivers;
+    /// Send letter according to this transport
+    LOG_DEBUG_S << "Transport: '" << getName() << "': sending letter to '" << receiverName << "'";
+    try {
+        connection->send(data);
+        // Successfully sent. Break locations loop.
+    } catch(const std::runtime_error& e)
+    {
+        throw std::runtime_error("Transport '" + getName() + "': could not send data to '" + receiverName + "' -- " + e.what());
+    } 
 }
 
+void Transport::cleanup(const std::string& receiverName)
+{
+    // Cleanup existing entries for the given receiver name, since they
+    // are not valid any more
+    std::map<std::string, OutgoingConnection::Ptr>::iterator it = mOutgoingConnections.find(receiverName);
+    if(it != mOutgoingConnections.end())
+    {
+        // Erase entry
+        mOutgoingConnections.erase(it++);
+    }
+}
+
+} // end namespace transport
 } // end namespace services
 } // end namespace fipa

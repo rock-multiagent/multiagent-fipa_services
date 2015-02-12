@@ -1,123 +1,33 @@
-#ifndef FIPA_SERVICES_TRANSPORTS_UDT_HPP
-#define FIPA_SERVICES_TRANSPORTS_UDT_HPP
+#ifndef FIPA_SERVICES_TRANSPORTS_UDT_UDT_TRANSPORT_HPP
+#define FIPA_SERVICES_TRANSPORTS_UDT_UDT_TRANSPORT_HPP
 
-#include <udt/udt.h>
 #include <vector>
-#include <queue>
 #include <boost/shared_ptr.hpp>
-#include <base/Time.hpp>
 #include <base/Logging.hpp>
-#include <fipa_acl/fipa_acl.h>
-#include <fipa_acl/message_generator/envelope_generator.h>
-#include <fipa_acl/message_parser/envelope_parser.h>
 #include <fipa_services/ErrorHandling.hpp>
 #include <fipa_services/transports/Transport.hpp>
+#include <fipa_services/transports/udt/IncomingConnection.hpp>
 
 namespace fipa {
 namespace services {
+namespace transports {
 namespace udt {
 
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES;
 
-
 /**
- * \class OutgoingConnection
- * \brief A unidirectional, outgoing udt connection that allows to send fipa letter to a receiver
- */
-class OutgoingConnection : public fipa::services::AbstractOutgoingConnection
-{
-    UDTSOCKET mSocket;
-
-public:
-    OutgoingConnection();
-
-    OutgoingConnection(const std::string& ipaddress, uint16_t port);
-
-    OutgoingConnection(const fipa::services::Address& address);
-
-    ~OutgoingConnection();
-
-    /**
-     * Connect to ipaddress and port
-     * \param ipaddress IP as string
-     * \param port Port number
-     * \throws if connection cannot be established
-     */
-    void connect(const std::string& ipaddress, uint16_t port);
-    
-    /**
-     * Send fipa::acl::Letter
-     * \param letter FIPA letter
-     */
-    void sendLetter(fipa::acl::Letter& letter) { sendLetter0(letter); }
-
-    /**
-     * Send message
-     * \param data string as data container
-     * \param ttl Time to live for this message, default is unlimited
-     * \param inorder Set to true if message you be received only in the right order
-     */
-    void sendData(const std::string& data, int ttl = -1, bool inorder = true) const;
-
-    /**
-     * Send fipa::acl::Letter
-     * \param letter FIPA letter
-     * \param ttl Time to live for this message, default is unlimited
-     * \param inorder Set to true if message you be received only in the right order
-     */
-    void sendLetter0(const fipa::acl::Letter& letter, int ttl = -1, bool inorder = true) const;
-};
-
-/**
- * \class IncomingConnection
- * \brief A unidirectional, incoming connection to receive incoming messages
- */
-class IncomingConnection : public fipa::services::Connection
-{
-    UDTSOCKET mSocket;
-
-public:
-    IncomingConnection();
-    ~IncomingConnection();
-    IncomingConnection(const UDTSOCKET& socket, const std::string& ip, uint16_t port);
-
-    /**
-     * Get underlying UDTSOCKET
-     * \return socket
-     */
-    const UDTSOCKET& getSocket() const { return mSocket; }
-
-    /**
-     * Equals operator based on the connection address
-     * \return true if the connection address is the same for both connections, false otherwise
-     */
-    bool operator==(const IncomingConnection& connection) const { return Connection::operator==(connection); }
-
-    /**
-     * Receive a message
-     * \param buffer to store message
-     * \param size size of the buffer
-     * \return number of received bytes
-     */
-    int receiveMessage(char* buffer, size_t size) const;
-};
-
-typedef boost::shared_ptr<IncomingConnection> IncomingConnectionPtr;
-typedef std::vector<IncomingConnectionPtr> IncomingConnections;
-
-/**
- * \class Node
- * \brief A Node provides a server that allows to establish udt connection to transfer
+ * \class UDTTransport
+ * \brief A UDTTransport provides a server that allows to establish udt connection to transfer
  * fipa::acl::Letter
  * \details
  * The implementation is caching all incoming messages in an internal queue until they are
- * handle by calling Node::nextLetter
+ * handle by calling UDTTransport::nextLetter
  * Very basic example for a receiver node:
  * \verbatim
  #include <fipa_services/transports/udt/UDTTransport.hpp>
 
  using namespace fipa::services;
- udt::Node node;
+ udt::UDTTransport node;
 
  // start node -- if no port is give it will be autoassigned and can be requested
  // by node.getAddress() afterwards.
@@ -154,27 +64,15 @@ typedef std::vector<IncomingConnectionPtr> IncomingConnections;
  connection.sendLetter(letter);
  \endverbatim
  */
-class Node : public fipa::services::Connection
+class UDTTransport : public Transport
 {
     UDTSOCKET mServerSocket;
     IncomingConnections mClients;
 
-    std::queue<fipa::acl::Letter> mLetterQueue;
-    fipa::acl::EnvelopeParser mEnvelopeParser;
+    Address mAddress;
 
     size_t mBufferSize;
     char* mpBuffer;
-public:
-
-    Node();
-    ~Node();
-
-    /**
-     * Start listening on the given port
-     * \param port Port that this node should listen on, if 0 then binding to any open port
-     * \param maxClients number of maximum clients, default is 50
-     */
-    void listen(uint16_t port = 0, uint32_t maxClients = 50);
 
     /**
      * Accept new connections
@@ -183,35 +81,39 @@ public:
     bool accept();
 
     /**
+     * Start listening on the given port
+     * \param port Port that this node should listen on, if 0 then binding to any open port
+     * \param maxClients number of maximum clients, default is 50
+     */
+    void listen(uint16_t port, uint32_t maxClients);
+public:
+
+    UDTTransport();
+    ~UDTTransport();
+
+    void start(uint16_t port = 0, uint32_t maxClients = 50);
+
+    /**
      * Update and read all sockets
      * \param readAllMessages If set to true, update will return only when no further message can be read from any of the IncomingConnections. If set to false all connections will be checked only once for new messages
      */
-    void update(bool readAllMessages = false);
-
-    /**
-     * Check wether this node has received new letters
-     * \return true if letter is available
-     */
-    bool hasLetter() const { return !mLetterQueue.empty(); }
-
-    /**
-     * Get the next available letter. This will remove the letter from the internal queue
-     * \return The oldest/front letter of the internal message queue
-     */
-    fipa::acl::Letter nextLetter();
-
+    virtual void update(bool readAllMessages = true);
 
     /**
      * Get address of this node for a given interface
      * \param interfaceName name of the interface, default is eth0
      * \return address of the node
      */
-    fipa::services::Address getAddress(const std::string& interfaceName = "eth0");
+    Address getAddress(const std::string& interfaceName = "eth0") const;
 
+    /**
+     * Create a udt based outgoing connection
+     */
+    virtual OutgoingConnection::Ptr establishOutgoingConnection(const Address& address);
 };
 
-
 } // end namespace udt
+} // end namespace transports
 } // end namespace services
 } // end namespace fipa
-#endif // FIPA_SERVICES_TRANSPORTS_UDT_HPP
+#endif // FIPA_SERVICES_TRANSPORTS_UDT_UDT_TRANSPORT_HPP
