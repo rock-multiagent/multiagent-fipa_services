@@ -36,7 +36,7 @@ void MessageTransport::activateTransports(transports::Transport::Type flags)
     for(int i = static_cast<int>(Transport::UDT); i < static_cast<int>(Transport::ALL); ++i)
     {
         Transport::Type type = static_cast<Transport::Type>(i);
-        if(flags && type)
+        if(flags & type)
         {
             activateTransport(type);
         }
