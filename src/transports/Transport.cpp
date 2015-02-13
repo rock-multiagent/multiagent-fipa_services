@@ -10,7 +10,7 @@
 #include <boost/assign.hpp>
 #include <boost/foreach.hpp>
 #include <fipa_services/transports/udt/UDTTransport.hpp>
-// #include <fipa_services/transports/tcp/TCPTransport.hpp>
+#include <fipa_services/transports/tcp/TCPTransport.hpp>
 
 namespace fipa {
 namespace services {
@@ -64,7 +64,7 @@ Transport::Ptr Transport::create(Type type)
         case UDT:
             return Transport::Ptr(new udt::UDTTransport());
         case TCP:
-            //return Transport::Ptr(new tcp::TCPTransport());
+            return Transport::Ptr(new tcp::TCPTransport());
         default:
             throw std::invalid_argument("fipa::services::Transport cannot create transport of type" + TypeTxt[type]);
     }

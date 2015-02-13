@@ -5,6 +5,7 @@ rock_executable(${PROJECT_NAME}_test
         message_transport_test.cpp
         service_directory_test.cpp
         udt_transport_test.cpp
+        tcp_transport_test.cpp
     DEPS ${PROJECT_NAME}
     LIBS ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
     NOINSTALL

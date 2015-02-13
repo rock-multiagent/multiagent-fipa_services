@@ -37,6 +37,8 @@ protected:
     Transport(Type type);
 
 public:
+    virtual ~Transport() {}
+
     typedef boost::shared_ptr<Transport> Ptr;
 
     /**
