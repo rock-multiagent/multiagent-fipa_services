@@ -61,18 +61,23 @@ public:
     static ServiceDirectoryList convert(const std::map<std::string, servicediscovery::avahi::ServiceDescription>& servicesMap);
 
     /**
+     * RegisterService
+     */
+    void registerService(const ServiceDirectoryEntry& entry) { registerService(entry, "_fipa_service_directory._udp"); }
+
+    /**
      * Register a service
      * \param entry The ServiceDirectoryEntry which describes the service that shall be registered
      * \param publishDomain Default domain under which services will be published
      * \param ttlInMS TimeToLive in Milliseconds
      */
-    void registerService(const ServiceDirectoryEntry& entry, const std::string& publishDomain = "_fipa_service_directory._udp", uint32_t ttlInMS = 30000);
+    void registerService(const ServiceDirectoryEntry& entry, const std::string& publishDomain, uint32_t ttlInMS = 30000);
 
     /**
      * Looks up services that have been registered with this instance and deregisters them
      * \throws NotFound If the service has not been locally deregistered and thus cannot be deregistered
      */
-    void deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field);
+    virtual void deregisterService(const std::string& regex, ServiceDirectoryEntry::Field field);
 
     /**
      * Search for a given service based on the field information
