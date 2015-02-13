@@ -42,6 +42,12 @@ struct Address
     bool operator==(const Address& other) const;
 
     bool operator!=(const Address& other) const { return !this->operator==(other); }
+
+    /**
+     * Less than operator, to allow usage of this structure with std::set
+     * \return true if other address is greater, false otherwise
+     */
+    bool operator<(const Address& other) const;
 };
 
 } // end namespace transports

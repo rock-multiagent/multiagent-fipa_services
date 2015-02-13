@@ -84,6 +84,12 @@ public:
     void send(const std::string& receiverName, const Address& address, const std::string& data);
 
     /**
+     * Get addresses for this transport for all available interfaces
+     * \return addresses of this transport for all available interfaces
+     */
+    std::set<Address> getAddresses() const;
+
+    /**
      * Get address for this transport and for the given interface
      * \return address of this transport for a given interface
      */

@@ -45,6 +45,11 @@ void MessageTransport::activateTransports(transports::Transport::Type flags)
 
 void MessageTransport::activateTransport(transports::Transport::Type type)
 {
+    if( mActiveTransports.end() != mActiveTransports.find(type))
+    {
+        throw std::runtime_error("MessageTransport::activateTransport: transport '" + transports::Transport::TypeTxt[type] + "' has already been activated");
+    }
+
     transports::Transport::Ptr transport = transports::Transport::create( type );
     std::string typeTxt = transport->getName();
 
@@ -59,6 +64,8 @@ void MessageTransport::activateTransport(transports::Transport::Type type)
     }
 
     transport->registerObserver(boost::bind(&MessageTransport::handleData, this, _1));
+    cacheTransportEndpoints(transport);
+
     mActiveTransports[type] = transport;
 }
 
@@ -78,18 +85,20 @@ std::vector<fipa::services::ServiceLocation> MessageTransport::getTransportEndpo
     return mTransportEndpoints;
 }
 
-void MessageTransport::setTransportEndpoints(const std::string& nic)
+void MessageTransport::cacheTransportEndpoints(transports::Transport::Ptr transport)
 {
-    std::vector<fipa::services::ServiceLocation> serviceLocations;
+    using namespace fipa::services::transports;
 
-    std::map<transports::Transport::Type, transports::Transport::Ptr>::iterator tit = mActiveTransports.begin();
-    for(; tit != mActiveTransports.end(); ++tit)
+    std::vector<fipa::services::ServiceLocation> serviceLocations;
+    std::set<Address> addresses = transport->getAddresses();
+
+    std::set<Address>::const_iterator ait = addresses.begin();
+    for(; ait != addresses.end(); ++ait)
     {
-        transports::Transport::Ptr transport = tit->second;
-        serviceLocations.push_back(fipa::services::ServiceLocation(transport->getAddress(nic).toString(), mServiceSignature));
+        serviceLocations.push_back(fipa::services::ServiceLocation(ait->toString(), mServiceSignature));
     }
 
-    mTransportEndpoints = serviceLocations;
+    mTransportEndpoints.insert(mTransportEndpoints.end(), serviceLocations.begin(), serviceLocations.end());
 }
 
 

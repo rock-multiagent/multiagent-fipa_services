@@ -145,6 +145,13 @@ private:
      */
     static void removeFromList(const fipa::acl::AgentID& receiver, fipa::acl::AgentIDList& receiversList);
 
+    /**
+     * Set the endpoints of the inbuilt transports based on the IP of active
+     * interfaces
+     * \throws if an active interface cannot be found
+     */
+    void cacheTransportEndpoints(fipa::services::transports::Transport::Ptr transport);
+
 public:
 
     /**
@@ -160,24 +167,35 @@ public:
 
     /**
      * Activate the given transports
+     * \param list of transports that shall be activated -- names need to
+     * corresponding to inbuilt transports
+     * \see fipa::services::transports::Transport
+     * \throw std::runtime_error when a transport has already been activated
      */
     void activateTransports(const std::vector<std::string>& transports);
 
+    /**
+     * Activate transports as indicated by flags,e.g.
+     * \verbatim
+         MessageTransport mt = MessageTransport( AgentID("agent"), ServiceDirectory::Ptr( new ServiceDirectory()));
+         mt.activateTransports( transports::Transport::UDT | transports::Transport::TCP );
+     \endverbatim
+     * \throw std::runtime_error when a transport has already been activated
+     */
     void activateTransports(transports::Transport::Type flags);
 
+    /**
+     * Activate a transport given by type
+     * This start the transport
+     * \throw std::runtime_error when a transport has already been activated
+     */
     void activateTransport(transports::Transport::Type type);
 
     /**
      * Get the endpoints of the inbuilt transports
+     * \return ServiceLocations of active transports
      */
     std::vector<fipa::services::ServiceLocation> getTransportEndpoints() const;
-
-    /**
-     * Set the endpoints of the inbuilt transports based on the IP of the given
-     * interface
-     * \throws if the interface cannot be found or is not active
-     */
-    void setTransportEndpoints(const std::string& nic);
 
     /**
      * Handle message, i.e. 
@@ -222,20 +240,41 @@ public:
 
     /** 
      * Set the internal message representation type
+     * \param message representation
      */
     void setInternalMessageRepresentationType(const fipa::acl::representation::Type& representation) { mRepresentation = representation; }
 
     /**
      * Get type of the internal message representation
+     * \return the message representation to be used
      */
     fipa::acl::representation::Type getInternalMessageRepresentationType() const { return mRepresentation; }
 
+    /**
+     * Trigger the MessageTransport and all associated underlying transports to
+     * process messages and establishing connections
+     */
     void trigger();
 
+    /**
+     * Get the service signature of the MessageTransport
+     */
     std::string getServiceSignature() const { return mServiceSignature; }
 
+    /**
+     * Service signature are part of the locator which is stored in the
+     * ServiceDirectory.
+     * The MessageTransport handles only services with service signature that
+     * are 'accepted'.
+     * This adds the given signature to the whitelist of accepted signatures.
+     * \param signature Service signature
+     */
     void addAcceptedServiceSignature(const std::string& signature) { mAcceptedServiceSignatures.insert(signature); }
 
+    /**
+     * Get the service directory that is associated with this MessageTransport
+     * \return service directory
+     */
     ServiceDirectory::Ptr getServiceDirectory() { return mpServiceDirectory; }
 
 };

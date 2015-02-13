@@ -31,18 +31,23 @@ std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
         struct ifaddrs* interface;
         for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
         {
-            if(interface->ifa_addr->sa_family == AF_INET)
+            // is interface running?
+            if(interface->ifa_flags & IFF_UP)
             {
-                // Match
-                if(interfaceName == std::string(interface->ifa_name) || interfaceName.empty())
+                // is interface IPv4?
+                if(interface->ifa_addr->sa_family == AF_INET)
                 {
-                    struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
-                    char* addr = inet_ntoa(sa->sin_addr);
-                    std::string ip = std::string(addr);
+                    // is the interface name matching?
+                    if(interfaceName == std::string(interface->ifa_name) || interfaceName.empty())
+                    {
+                        struct sockaddr_in* sa = (struct sockaddr_in*) interface->ifa_addr;
+                        char* addr = inet_ntoa(sa->sin_addr);
+                        std::string ip = std::string(addr);
 
-                    freeifaddrs(interfaces);
+                        freeifaddrs(interfaces);
 
-                    return ip;
+                        return ip;
+                    }
                 }
             }
         }
@@ -124,6 +129,7 @@ OutgoingConnection::Ptr Transport::getCachedOutgoingConnection(const std::string
     // Return nullptr
     return OutgoingConnection::Ptr();
 }
+
 void Transport::send(const std::string& receiverName, const Address& address, const std::string& data)
 {
     // Validate connection by comparing address in cache and current address in service directory
@@ -154,6 +160,46 @@ void Transport::send(const std::string& receiverName, const Address& address, co
     {
         throw std::runtime_error("Transport '" + getName() + "': could not send data to '" + receiverName + "' -- " + e.what());
     } 
+}
+
+std::set<Address> Transport::getAddresses() const
+{
+    std::set<Address> addresses;
+
+    struct ifaddrs* interfaces;
+    if(0 == getifaddrs(&interfaces))
+    {
+        struct ifaddrs* interface;
+        for(interface = interfaces; interface != NULL; interface = interface->ifa_next)
+        {
+            if(interface->ifa_addr == NULL)
+            {
+                continue;
+            }
+
+            // filter out loopback device
+            if(!(interface->ifa_flags & IFF_LOOPBACK))
+            {
+                std::string interfaceName(interface->ifa_name);
+                try {
+                    Address address = getAddress(interfaceName);
+                    addresses.insert(address);
+                } catch(const std::exception& e)
+                {
+                    LOG_DEBUG_S << "Could not retrieve address for nic: " << interfaceName;
+                }
+            }
+        }
+    }
+    freeifaddrs(interfaces);
+
+    if(addresses.empty())
+    {
+        throw std::runtime_error("fipa::services::Transport: could not get any address for this transport");
+    } else {
+        LOG_DEBUG_S << "Return " << addresses.size() << " addresses";
+        return addresses;
+    }
 }
 
 void Transport::cleanup(const std::string& receiverName)

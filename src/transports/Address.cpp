@@ -39,6 +39,25 @@ bool Address::operator==(const Address& other) const
     return this->ip == other.ip && this->port == other.port;
 }
 
+bool Address::operator<(const Address& other) const
+{
+    if(*this == other)
+        return false;
+
+    if(ip < other.ip)
+    {
+        return true;
+    } else if(port < other.port)
+    {
+        return true;
+    } else if(protocol < other.protocol)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 } // end namespace transport
 } // end namespace services
 } // end namespace fipa
