@@ -11,6 +11,8 @@ rock_library(fipa_services
         transports/Connection.cpp
         transports/OutgoingConnection.cpp
         transports/Transport.cpp
+        transports/tcp/OutgoingConnection.cpp
+        transports/tcp/TCPTransport.cpp
         transports/udt/UDTTransport.cpp
         transports/udt/OutgoingConnection.cpp
         transports/udt/IncomingConnection.cpp
@@ -27,7 +29,8 @@ rock_library(fipa_services
         transports/Connection.hpp
         transports/OutgoingConnection.hpp
         transports/Transport.hpp
-        transports/tcp/SocketTransport.hpp
+        transports/tcp/OutgoingConnection.hpp
+        transports/tcp/TCPTransport.hpp
         transports/udt/UDTTransport.hpp
         transports/udt/OutgoingConnection.hpp
         transports/udt/IncomingConnection.hpp
