@@ -295,6 +295,12 @@ public:
      */
     void deregisterClient(const std::string& clientName);
 
+    /**
+     * Serialize letter according to requirement of the signature
+     * \return serialized data
+     */
+    std::string serializeLetter(const fipa::acl::Letter& letter, const std::string& signature) const;
+
 };
 
 } // end namespace message_transport

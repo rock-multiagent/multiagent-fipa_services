@@ -306,6 +306,7 @@ fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter
         if(list.empty())
         {
             // Try local delivery
+            LOG_DEBUG_S << "Could not find receiver " << receiverName << " in service directory: trying local delivery";
             if(localForward(receiverName, letter))
             {
                 removeFromList(*rit, remainingReceivers);
@@ -396,6 +397,7 @@ void MessageTransport::forward(const std::string& receiverName, const ServiceLoc
     // Check if the destination is a local address
     if(isLocal(location))
     {
+        LOG_DEBUG_S << "Receiver: " << receiverName << " at " << location.toString() << " is local receiver";
         if(!localForward(receiverName, letter))
         {
             throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "': could not forward to receiver: '" + receiverName + "' -- local delivery failed");
@@ -421,7 +423,7 @@ void MessageTransport::forward(const std::string& receiverName, const ServiceLoc
             transports::Transport::Ptr transport = tit->second;
             LOG_DEBUG_S << "MessageTransport: '" << transport->getName() << "': forwarding to other MTS";
 
-            std::string data = fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::BITEFFICIENT);
+            std::string data = serializeLetter(letter, location.getSignatureType());
 
             // Try sending via given transport
             // will throw on failure
@@ -469,6 +471,41 @@ void MessageTransport::registerClient(const std::string& clientName, const std::
 void MessageTransport::deregisterClient(const std::string& clientName)
 {
     mpServiceDirectory->deregisterService(clientName, fipa::services::ServiceDirectoryEntry::NAME);
+}
+
+std::string MessageTransport::serializeLetter(const fipa::acl::Letter& letter, const std::string& signature) const
+{
+    // Requires special adaptation
+    // TODOS: allow special adapter integration
+    if(signature == "JadeProxyAgent")
+    {
+        fipa::acl::Letter adaptedLetter = letter;
+        fipa::acl::ACLMessage msg = letter.getACLMessage();
+        std::string msgStr = fipa::acl::MessageGenerator::create(msg, fipa::acl::representation::STRING_REP);
+
+        // Extra envelope
+        // Altering encoding to string
+        fipa::acl::ACLBaseEnvelope extraEnvelope;
+        extraEnvelope.setACLRepresentation(fipa::acl::representation::STRING_REP);
+        extraEnvelope.setPayloadLength(msgStr.length());
+
+        // Add sender addresses from the service locations
+        fipa::acl::AgentID sender = msg.getSender();
+        std::vector<fipa::services::ServiceLocation>::const_iterator cit = mTransportEndpoints.begin();
+        for(; cit != mTransportEndpoints.end(); ++cit)
+        {
+            sender.addAddress(cit->getServiceAddress());
+        }
+        extraEnvelope.setFrom(sender);
+        adaptedLetter.addExtraEnvelope(extraEnvelope);
+
+        // Modify the payload
+        adaptedLetter.setPayload(msgStr);
+        return fipa::acl::EnvelopeGenerator::create(adaptedLetter, fipa::acl::representation::XML);
+    } else
+    {
+        return fipa::acl::EnvelopeGenerator::create(letter, fipa::acl::representation::BITEFFICIENT);
+    }
 }
 
 } // end namespace message_transport
