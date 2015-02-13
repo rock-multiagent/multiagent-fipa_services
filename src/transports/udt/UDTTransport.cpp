@@ -152,7 +152,6 @@ void UDTTransport::update(bool readAllMessages)
         if(it != mClients.end())
         {
             mClients.erase(it);
-            break;
         }
     }
 }
