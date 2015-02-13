@@ -453,6 +453,24 @@ void MessageTransport::trigger()
     }
 }
 
+void MessageTransport::registerClient(const std::string& clientName, const std::string& clientDescription)
+{
+    ServiceLocator locator;
+    std::vector<fipa::services::ServiceLocation>::const_iterator cit = mTransportEndpoints.begin();
+    for(; cit != mTransportEndpoints.end(); ++cit)
+    {
+        locator.addLocation(*cit);
+    }
+
+    fipa::services::ServiceDirectoryEntry client(clientName, mServiceSignature, locator, clientDescription);
+    mpServiceDirectory->registerService(client);
+}
+
+void MessageTransport::deregisterClient(const std::string& clientName)
+{
+    mpServiceDirectory->deregisterService(clientName, fipa::services::ServiceDirectoryEntry::NAME);
+}
+
 } // end namespace message_transport
 } // end namespace services
 } // end namespace fipa

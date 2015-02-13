@@ -277,6 +277,24 @@ public:
      */
     ServiceDirectory::Ptr getServiceDirectory() { return mpServiceDirectory; }
 
+    /**
+     * Allows to register a client which is added to the service directory
+     * accordingly
+     * Locators of this client will be set according to the activated transports
+     * \param clientName Name of client to register
+     * \param clientDescription Description of client to register
+     */
+    void registerClient(const std::string& clientName, const std::string& clientDescription);
+
+    /**
+     *
+     * Allows to register a client which is added to the service directory
+     * accordingly
+     * \param clientName Name of client to deregister
+     * \throw fipa::services::NotFound when client could not be found
+     */
+    void deregisterClient(const std::string& clientName);
+
 };
 
 } // end namespace message_transport
