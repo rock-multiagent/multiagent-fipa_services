@@ -1,11 +1,11 @@
 find_package(Boost COMPONENTS unit_test_framework)
 rock_executable(${PROJECT_NAME}_test 
-    SOURCES test.cpp 
-        distributed_service_directory_test.cpp
-        message_transport_test.cpp
-        service_directory_test.cpp
-        udt_transport_test.cpp
-        tcp_transport_test.cpp
+    SOURCES Test.cpp
+        DistributedServiceDirectoryTest.cpp
+        MessageTransportTest.cpp
+        ServiceDirectoryTest.cpp
+        UDTTransportTest.cpp
+        TCPTransportTest.cpp
     DEPS ${PROJECT_NAME}
     LIBS ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
     NOINSTALL
