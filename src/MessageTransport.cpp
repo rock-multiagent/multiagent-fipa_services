@@ -370,17 +370,28 @@ bool MessageTransport::isLocal(const ServiceLocation& local) const
 
 void MessageTransport::handleData(const std::string& data)
 {
+    using namespace fipa::acl;
+
     LOG_DEBUG_S << mAgentId.getName() << " received data ";
 
-    fipa::acl::Letter letter;
-    if( fipa::acl::EnvelopeParser::parseData(data, letter, fipa::acl::representation::BITEFFICIENT) )
+    Letter letter;
+    for(int i = static_cast<int>(representation::BITEFFICIENT); i < static_cast<int>(representation::END_MARKER); ++i)
     {
-
-        LOG_DEBUG_S << mAgentId.getName() << " forward envelope to handler";
-        handle(letter);
-    } else {
-        LOG_WARN_S << mAgentId.getName() << " could not process data: check for correct representation";
+        try {
+            representation::Type rep = static_cast<representation::Type>(i);
+            if( fipa::acl::EnvelopeParser::parseData(data, letter, rep) )
+            {
+                LOG_DEBUG_S << mAgentId.getName() << " decoding of envelope succeeded: " << representation::TypeTxt[rep];
+                LOG_DEBUG_S << mAgentId.getName() << " forward envelope to handler";
+                handle(letter);
+                return;
+            }
+        } catch(const std::runtime_error& e)
+        {
+            LOG_INFO_S << e.what();
+        }
     }
+    LOG_WARN_S << "Failed to handle data: check correct use of representation";
 }
 
 
