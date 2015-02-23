@@ -4,16 +4,25 @@
 namespace fipa {
 namespace services {
 
+std::string DistributedServiceDirectory::canonizeName(const std::string& name)
+{
+    std::string tmp = name;
+    // Replace all dots in the name with a ?
+    // that makes it useable as regex at the same time
+    boost::replace_all(tmp, ".","?");
+    return tmp;
+}
+
 servicediscovery::avahi::ServiceDescription DistributedServiceDirectory::convert(const ServiceDirectoryEntry& entry)
 {
     servicediscovery::avahi::ServiceDescription description;
 
-    // Set all field for publishing
+    // Set all fields for publishing
     for(size_t i = 0; i < ServiceDirectoryEntry::END_MARKER; ++i)
     {
         if(i == (int) ServiceDirectoryEntry::NAME)
         {
-            description.setName(entry.getName());
+            description.setName( canonizeName(entry.getName()) );
         } else {
             description.setDescription( ServiceDirectoryEntry::FieldTxt[(ServiceDirectoryEntry::Field) i] ,entry.getFieldContent( (ServiceDirectoryEntry::Field) i));
         }
@@ -32,7 +41,7 @@ ServiceDirectoryEntry DistributedServiceDirectory::convert(const servicediscover
         ServiceDirectoryEntry::Field field = (ServiceDirectoryEntry::Field) i;
         if(i == (int) ServiceDirectoryEntry::NAME)
         {
-            entry.setFieldContent( field, description.getName() );
+            entry.setFieldContent( field, canonizeName(description.getName()) );
         } else {
             entry.setFieldContent( field, description.getDescription(ServiceDirectoryEntry::FieldTxt[ field ]));
         }
@@ -55,6 +64,9 @@ ServiceDirectoryList DistributedServiceDirectory::convert(const std::map<std::st
 void DistributedServiceDirectory::registerService(const ServiceDirectoryEntry& entry, const std::string& publishDomain, uint32_t ttlInMS)
 {
     using namespace servicediscovery::avahi;
+
+    LOG_DEBUG_S << "DistributedServiceDirectory: register: " << entry.toString();
+
     boost::unique_lock<boost::mutex> lock(mMutex);
     ServiceDescription serviceDescription = convert(entry); 
 

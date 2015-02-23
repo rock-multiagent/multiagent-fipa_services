@@ -33,6 +33,8 @@ class DistributedServiceDirectory : public ServiceDirectory
     typedef std::map<ServiceDirectoryEntry, servicediscovery::avahi::ServiceDiscovery*> ServiceDiscoveryMap;
     ServiceDiscoveryMap mServiceDiscoveries;
 
+    static std::string canonizeName(const std::string& name);
+
 public:
     /**
      * Destructor
