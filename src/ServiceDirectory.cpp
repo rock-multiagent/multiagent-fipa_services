@@ -16,7 +16,14 @@ void ServiceDirectory::registerService(const ServiceDirectoryEntry& entry)
 {
     boost::unique_lock<boost::mutex> lock(mMutex);
     LOG_DEBUG_S << "Register service: " << entry.toString();
-    mServices[entry.getName()] = entry;
+    ServiceDirectoryMap::const_iterator cit = mServices.find(entry.getName());
+    if(cit != mServices.end())
+    {
+        LOG_WARN_S << "Duplicate entry: " << entry.toString();
+        throw DuplicateEntry(entry.toString());
+    } else {
+        mServices[entry.getName()] = entry;
+    }
     updateTimestamp();
 }
 
