@@ -302,7 +302,11 @@ fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter
 
         // Check for local receivers, or identify locator
         bool doThrow = false;
-        fipa::services::ServiceDirectoryList list = mpServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, doThrow);
+
+        // Add "$" to make sure names are not interpreted as prefix
+        fipa::services::ServiceDirectoryList list = mpServiceDirectory->search(receiverName + "$", fipa::services::ServiceDirectoryEntry::NAME, doThrow);
+        // The list can be either empty or contain or or multiple entries, e.g.
+        // regex pattern matching simplifies broadcasting/multicasting
         if(list.empty())
         {
             // Try local delivery
@@ -322,35 +326,44 @@ fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter
                 it->second->cleanup(receiverName);
             }
             continue;
-        } else if(list.size() > 1) {
-            LOG_WARN_S << "MessageTransport '" << mAgentId.getName() << "': receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate";
         } else {
             using namespace fipa::services;
-
-            // Extract the service locations and try to communicate via the given protocols (which correspond to a transport)
-            ServiceDirectoryEntry serviceEntry = list.front();
-
-            ServiceLocator locator = serviceEntry.getLocator();
-            ServiceLocations locations = locator.getLocations();
-            for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
+            ServiceDirectoryList::const_iterator cit = list.begin();
+            for(; cit != list.end(); ++cit)
             {
-                // Retrieve address
-                ServiceLocation location = *it;
+                ServiceDirectoryEntry serviceEntry = *cit;
 
-                try{
-                    forward(receiverName, location, updatedLetter);
-                    removeFromList(*rit, remainingReceivers);
-
-                    // Successfully sent. Break locations loop.
-                    break;
-
-                } catch(const std::runtime_error& e)
+                // Filter out sender from broadcast/multicast
+                if(serviceEntry.getName() == envelope.getFrom().getName())
                 {
-                    LOG_WARN_S << "MessageTransport: '" << mAgentId.getName() << ": could not send letter to '" << receiverName << "' -- via location: " << location.toString() << " " << e.what();
+                    LOG_DEBUG_S << "Skipping sending broadcast to self " << envelope.getFrom().getName();
                     continue;
                 }
 
-            } // end for
+                ServiceLocator locator = serviceEntry.getLocator();
+                ServiceLocations locations = locator.getLocations();
+                for(ServiceLocations::const_iterator it = locations.begin(); it != locations.end(); it++)
+                {
+                    // Retrieve address
+                    ServiceLocation location = *it;
+
+                    try{
+                        // serviceEntry.getName() is our receiver -- after
+                        // resolution of regex
+                        forward(serviceEntry.getName(), location, updatedLetter);
+                        removeFromList(*rit, remainingReceivers);
+
+                        // Successfully sent. Break locations loop.
+                        break;
+
+                    } catch(const std::runtime_error& e)
+                    {
+                        LOG_WARN_S << "MessageTransport: '" << mAgentId.getName() << ": could not send letter to '" << receiverName << "' -- via location: " << location.toString() << " " << e.what();
+                        continue;
+                    }
+
+                } // end for
+            }
         } // end else
     } // end for receivers
 

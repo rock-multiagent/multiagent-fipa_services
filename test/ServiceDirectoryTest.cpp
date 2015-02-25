@@ -1,7 +1,7 @@
 #include <boost/test/auto_unit_test.hpp>
 #include <iostream>
 #include <fipa_services/ServiceDirectory.hpp>
-BOOST_AUTO_TEST_SUITE(service_directory_suite)
+BOOST_AUTO_TEST_SUITE(service_directory)
 
 std::string getProtocolPath()
 {
@@ -14,7 +14,7 @@ std::string getProtocolPath()
     return configurationPath;
 }
 
-BOOST_AUTO_TEST_CASE(service_directory_test)
+BOOST_AUTO_TEST_CASE(simple_test)
 {
     using namespace fipa::services;
 
@@ -38,6 +38,38 @@ BOOST_AUTO_TEST_CASE(service_directory_test)
     ServiceDirectoryList list = sd.search(otherEntry);
     BOOST_REQUIRE(list[0].getName() == name);
     
+}
+
+BOOST_AUTO_TEST_CASE(regex_matching)
+{
+    using namespace fipa::services;
+
+    ServiceDirectory sd;
+    {
+        Name name("test-A");
+        Type type;
+        ServiceLocator locator;
+        Description description;
+        ServiceDirectoryEntry entry(name, type, locator, description);
+        // Modify only the type
+        Type otherType("other-type");
+        ServiceDirectoryEntry otherEntry(name, otherType, locator, description);
+        BOOST_REQUIRE_NO_THROW(sd.registerService(entry));
+    }
+    {
+        Name name("test-B");
+        Type type;
+        ServiceLocator locator;
+        Description description;
+        ServiceDirectoryEntry entry(name, type, locator, description);
+        // Modify only the type
+        Type otherType("other-type");
+        ServiceDirectoryEntry otherEntry(name, otherType, locator, description);
+        BOOST_REQUIRE_NO_THROW(sd.registerService(entry));
+    }
+
+    ServiceDirectoryList list = sd.search(".*$", ServiceDirectoryEntry::NAME);
+    BOOST_REQUIRE(list.size() == 2);
 }
 
 
