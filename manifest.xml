@@ -2,6 +2,7 @@
   <description brief="FIPA based services">
   Implementation of FIPA services such as message transport service and service directory
   </description>
+  <maintainer>Thomas Roehr/thomas.roehr@dfki.de</maintainer>
   <author>Thomas Roehr/thomas.roehr@dfki.de</author>
   <license></license>
   <url>https://gitorious.org/rock-multiagent</url>
