@@ -34,7 +34,21 @@ rock_library(fipa_services
         transports/udt/UDTTransport.hpp
         transports/udt/OutgoingConnection.hpp
         transports/udt/IncomingConnection.hpp
-    LIBS ${Boost_REGEX_LIBRARIES} ${Boost_THREAD_LIBRARIES} ${Boost_SYSTEM_LIBRARIES} udt
+    LIBS ${Boost_REGEX_LIBRARIES} ${Boost_THREAD_LIBRARIES} ${Boost_SYSTEM_LIBRARIES}
     DEPS_PKGCONFIG base-lib fipa_acl service_discovery
 )
 
+# Check whether there is a pkg-config information if not try direct linking
+pkg_check_modules(UDT "udt")
+if(UDT_FOUND)
+    message(STATUS "-- found UDT using pkg-config: ${UDT_LIBRARIES}")
+    target_link_libraries(fipa_services ${UDT_LIBRARIES})
+else()
+    find_library(UDT NAMES "udt" HINTS "/usr/lib")
+    if(UDT)
+        message(STATUS "-- found UDT library: ${UDT}")
+        target_link_libraries(fipa_services ${UDT})
+    else()
+        message(FATAL " -- could not find UDT library: ${UDT}")
+    endif()
+endif()
