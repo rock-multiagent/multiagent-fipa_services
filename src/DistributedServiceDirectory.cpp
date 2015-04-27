@@ -1,4 +1,5 @@
 #include "DistributedServiceDirectory.hpp"
+#include <boost/algorithm/string.hpp>
 #include <base/Logging.hpp>
 
 namespace fipa {
