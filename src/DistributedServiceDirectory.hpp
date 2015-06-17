@@ -4,6 +4,8 @@
 #include <fipa_services/ServiceDirectory.hpp>
 #include <service_discovery/ServiceDiscovery.hpp>
 
+#define DEFAULT_SERVICE_SCOPE "_fipa_service_directory._udp"
+
 namespace fipa {
 namespace services {
 /**
@@ -35,11 +37,27 @@ class DistributedServiceDirectory : public ServiceDirectory
 
     static std::string canonizeName(const std::string& name);
 
+    // Default listing object (to make sure service discovery is working when
+    // no other service is registered)
+    servicediscovery::avahi::ServiceDiscovery* mServiceDiscovery;
+
 public:
+
     /**
-     * Destructor
+     * Default constructor using the default listening scope for that service
+     * discovery
      */
-    virtual ~DistributedServiceDirectory() {}
+    DistributedServiceDirectory(const std::string& scope = DEFAULT_SERVICE_SCOPE);
+
+    /**
+     * Constructor to allow setting of multiple listening scopes
+     */
+    DistributedServiceDirectory(const std::vector<std::string>& scopes);
+
+    /**
+     * Virtual Destructor
+     */
+    virtual ~DistributedServiceDirectory();
 
     /**
      * Convert a ServiceDirectoryEntry to a avahi description
@@ -65,7 +83,7 @@ public:
     /**
      * RegisterService
      */
-    void registerService(const ServiceDirectoryEntry& entry) { registerService(entry, "_fipa_service_directory._udp"); }
+    void registerService(const ServiceDirectoryEntry& entry) { registerService(entry, DEFAULT_SERVICE_SCOPE); }
 
     /**
      * Register a service

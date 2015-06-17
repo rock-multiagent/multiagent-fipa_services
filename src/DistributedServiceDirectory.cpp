@@ -5,6 +5,26 @@
 namespace fipa {
 namespace services {
 
+DistributedServiceDirectory::DistributedServiceDirectory(const std::string& scope)
+    : mServiceDiscovery(new servicediscovery::avahi::ServiceDiscovery())
+{
+    std::vector<std::string> scopes;
+    scopes.push_back(scope);
+
+    mServiceDiscovery->listenOn(scopes);
+}
+
+DistributedServiceDirectory::DistributedServiceDirectory(const std::vector<std::string>& scopes)
+    : mServiceDiscovery(new servicediscovery::avahi::ServiceDiscovery())
+{
+    mServiceDiscovery->listenOn(scopes);
+}
+
+DistributedServiceDirectory::~DistributedServiceDirectory()
+{
+    delete mServiceDiscovery;
+}
+
 std::string DistributedServiceDirectory::canonizeName(const std::string& name)
 {
     std::string tmp = name;
@@ -118,9 +138,9 @@ ServiceDirectoryList DistributedServiceDirectory::search(const std::string& rege
     }
 
     // Search for services
-    LOG_DEBUG("Searching for services");
+    LOG_DEBUG_S << "Searching for services: " << regex;
     std::map<std::string, ServiceDescription> results = ServiceDiscovery::getVisibleServices(pattern);
-    LOG_DEBUG("Search completed");
+    LOG_DEBUG_S << "Search completed";
     if(results.empty() && doThrow)
     {
         throw NotFound("DistributedServiceDirectory::search failed: No ServiceDirectoryEntry matching '" + regex + "' on field type '" + ServiceDirectoryEntry::FieldTxt[field] + "'");
