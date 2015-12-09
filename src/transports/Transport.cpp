@@ -119,7 +119,7 @@ OutgoingConnection::Ptr Transport::getCachedOutgoingConnection(const std::string
         connection = cit->second;
         if(connection->getAddress() != address)
         {
-            LOG_DEBUG_S << "Transport '" << getName() << "': cached connection requires an update " << connection->getAddress().toString() 
+            LOG_DEBUG_S << "Transport '" << getName() << "': cached connection requires an update " << connection->getAddress().toString()
                         << " vs. " << address.toString() << " -- deleting existing entry";
             mOutgoingConnections.erase(receiverName);
         }  else {
@@ -132,34 +132,46 @@ OutgoingConnection::Ptr Transport::getCachedOutgoingConnection(const std::string
 
 void Transport::send(const std::string& receiverName, const Address& address, const std::string& data)
 {
-    // Validate connection by comparing address in cache and current address in service directory
-    OutgoingConnection::Ptr connection = getCachedOutgoingConnection(receiverName, address);
-
-    // Connection does not exist, create and 
-    // cache new connection
-    if(!connection)
+    /// Send letter according to this transport
+    // allow for one retry in order to handle old dangling connection
+    LOG_DEBUG_S << "Transport: '" << getName() << "': sending letter to '" << receiverName << "'";
+    for(int r = 0; r < 2; ++r)
     {
-        LOG_DEBUG_S << "Transport: '" << getName() << "': establishing new connection.";
-        try {
-            connection = establishOutgoingConnection(address);
+        // Validate connection by comparing address in cache and current address in service directory
+        OutgoingConnection::Ptr connection = getCachedOutgoingConnection(receiverName, address);
 
-            // cache connection
-            mOutgoingConnections[receiverName] = connection;
+        // Connection does not exist, create and
+        // cache new connection
+        if(!connection)
+        {
+            LOG_DEBUG_S << "Transport: '" << getName() << "': establishing new connection.";
+            try {
+                connection = establishOutgoingConnection(address);
+
+                // cache connection
+                mOutgoingConnections[receiverName] = connection;
+            } catch(const std::exception& e)
+            {
+               mOutgoingConnections.erase(receiverName);
+               throw std::runtime_error("Transport '" + getName() + "': could not establish connection to '" + address.toString() + "' -- " + e.what());
+            }
+        }
+
+        try {
+            connection->send(data);
+            // Successfully sent. Break locations loop.
+            break;
         } catch(const std::exception& e)
         {
-           throw std::runtime_error("Transport '" + getName() + "': could not establish connection to '" + address.toString() + "' -- " + e.what());
+            mOutgoingConnections.erase(receiverName);
+            if(r >= 1) // after one retry throw
+            {
+                throw std::runtime_error("Transport '" + getName() + "': could not send data to '" + receiverName + "' -- " + e.what());
+            } else {
+                LOG_DEBUG_S << "Transport: '" << getName() << "': first try sending letter to '" << receiverName << "' failed -- cleaning cache to handle dangling connection";
+            }
         }
     }
-
-    /// Send letter according to this transport
-    LOG_DEBUG_S << "Transport: '" << getName() << "': sending letter to '" << receiverName << "'";
-    try {
-        connection->send(data);
-        // Successfully sent. Break locations loop.
-    } catch(const std::runtime_error& e)
-    {
-        throw std::runtime_error("Transport '" + getName() + "': could not send data to '" + receiverName + "' -- " + e.what());
-    } 
 }
 
 std::set<Address> Transport::getAddresses() const
