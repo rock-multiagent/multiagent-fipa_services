@@ -9,7 +9,9 @@
 #include <arpa/inet.h>
 #include <boost/assign.hpp>
 #include <boost/foreach.hpp>
+#ifndef TRANSPORT_UDT_UNSUPPORTED
 #include <fipa_services/transports/udt/UDTTransport.hpp>
+#endif
 #include <fipa_services/transports/tcp/TCPTransport.hpp>
 
 namespace fipa {
@@ -62,7 +64,11 @@ Transport::Ptr Transport::create(Type type)
     switch(type)
     {
         case UDT:
+#ifndef TRANSPORT_UDT_UNSUPPORTED
             return Transport::Ptr(new udt::UDTTransport());
+#else
+            throw std::runtime_error("fipa::services::Transport: support for selected transport is not available: " + TypeTxt[type]);
+#endif
         case TCP:
             return Transport::Ptr(new tcp::TCPTransport());
         default:

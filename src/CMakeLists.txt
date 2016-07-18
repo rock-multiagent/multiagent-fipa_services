@@ -1,5 +1,21 @@
 find_package(Boost COMPONENTS thread regex system unit_test_framework REQUIRED)
 
+# Check whether there is a pkg-config information if not try direct linking
+pkg_check_modules(UDT "udt")
+if(UDT_FOUND)
+    message(STATUS "-- found UDT using pkg-config: ${UDT_LIBRARIES}")
+else()
+    find_library(UDT NAMES "udt" HINTS "/usr/lib")
+    if(UDT)
+        set(UDT_FOUND true)
+        set(UDT_LIBRARIES ${UDT})
+    else()
+        add_definitions(-DTRANSPORT_UDT_UNSUPPORTED)
+        message(STATUS " -- could not find UDT library: ${UDT} -- compiling"
+            " without out UDT support")
+    endif()
+endif()
+
 rock_library(fipa_services
     SOURCES 
         DistributedServiceDirectory.cpp
@@ -38,17 +54,7 @@ rock_library(fipa_services
     DEPS_PKGCONFIG base-lib fipa_acl service_discovery
 )
 
-# Check whether there is a pkg-config information if not try direct linking
-pkg_check_modules(UDT "udt")
 if(UDT_FOUND)
-    message(STATUS "-- found UDT using pkg-config: ${UDT_LIBRARIES}")
+    message(STATUS "-- found UDT library: ${UDT_LIBRARIES}")
     target_link_libraries(fipa_services ${UDT_LIBRARIES})
-else()
-    find_library(UDT NAMES "udt" HINTS "/usr/lib")
-    if(UDT)
-        message(STATUS "-- found UDT library: ${UDT}")
-        target_link_libraries(fipa_services ${UDT})
-    else()
-        message(FATAL " -- could not find UDT library: ${UDT}")
-    endif()
 endif()
