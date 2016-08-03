@@ -25,6 +25,8 @@ UDTTransport::UDTTransport()
     mServerSocket = UDT::socket(AF_INET, SOCK_DGRAM, 0);
     bool block = false;
     UDT::setsockopt(mServerSocket, 0 /*ignored*/, UDT_RCVSYN,&block,sizeof(bool));
+    bool reuse = true;
+    UDT::setsockopt(mServerSocket, 0 /*ignored*/, UDT_REUSEADDR,&reuse, sizeof(bool));
 
     mpBuffer = new char[mBufferSize];
     if(mpBuffer == NULL)
