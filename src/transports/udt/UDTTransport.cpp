@@ -17,11 +17,20 @@ namespace udt {
 
 extern const uint32_t MAX_MESSAGE_SIZE_BYTES = 20*1024*1024;
 
+uint32_t UDTTransport::msRefCount = 0;
+
 
 UDTTransport::UDTTransport()
     : Transport(UDT)
     , mBufferSize(10000000)
 {
+    ++msRefCount;
+    if(UDT::ERROR == UDT::startup())
+    {
+        throw std::runtime_error("fipa_services::udt::UDTTransport: startup failed " +
+                std::string(UDT::getlasterror().getErrorMessage()));
+    }
+
     mServerSocket = UDT::socket(AF_INET, SOCK_DGRAM, 0);
     bool block = false;
     UDT::setsockopt(mServerSocket, 0 /*ignored*/, UDT_RCVSYN,&block,sizeof(bool));
@@ -37,6 +46,10 @@ UDTTransport::UDTTransport()
 
 UDTTransport::~UDTTransport()
 {
+    if(--msRefCount == 0)
+    {
+        UDT::cleanup();
+    }
     delete mpBuffer;
 }
 

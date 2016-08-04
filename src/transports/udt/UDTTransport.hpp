@@ -66,6 +66,8 @@ extern const uint32_t MAX_MESSAGE_SIZE_BYTES;
  */
 class UDTTransport : public Transport
 {
+    static uint32_t msRefCount;
+
     UDTSOCKET mServerSocket;
     IncomingConnections mClients;
 
