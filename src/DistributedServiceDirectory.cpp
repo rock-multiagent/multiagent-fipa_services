@@ -22,6 +22,7 @@ DistributedServiceDirectory::DistributedServiceDirectory(const std::vector<std::
 
 DistributedServiceDirectory::~DistributedServiceDirectory()
 {
+    mServiceDiscovery->stop();
     delete mServiceDiscovery;
 }
 
@@ -117,6 +118,7 @@ void DistributedServiceDirectory::deregisterService(const std::string& regex, Se
 
         if(boost::regex_match( entry.getFieldContent(field) ,what,r))
         {
+            serviceDiscovery->stop();
             delete serviceDiscovery;
             mServiceDiscoveries.erase(it);
             return;
