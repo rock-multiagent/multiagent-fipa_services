@@ -482,13 +482,20 @@ void MessageTransport::trigger()
 void MessageTransport::registerClient(const std::string& clientName, const std::string& clientDescription)
 {
     ServiceLocator locator;
-    std::vector<fipa::services::ServiceLocation>::const_iterator cit = mTransportEndpoints.begin();
-    for(; cit != mTransportEndpoints.end(); ++cit)
+    if(mTransportEndpoints.empty())
     {
-        locator.addLocation(*cit);
+        throw std::runtime_error("MessageTransport '" + mAgentId.getName() + "': registerClient '" + clientName + "' failed since a locator (transport endpoint) does not exist. "
+                "Please call 'activateTransport' first");
+    } else {
+        std::vector<fipa::services::ServiceLocation>::const_iterator cit = mTransportEndpoints.begin();
+        for(; cit != mTransportEndpoints.end(); ++cit)
+        {
+            locator.addLocation(*cit);
+        }
     }
 
     fipa::services::ServiceDirectoryEntry client(clientName, mServiceSignature, locator, clientDescription);
+    LOG_INFO_S << "Register client: '" << client.toString() << "'";
     mpServiceDirectory->registerService(client);
 }
 
