@@ -2,7 +2,7 @@
 
 #include "MessageTransport.hpp"
 #include "ErrorHandling.hpp"
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <base/Time.hpp>
 
 #include <boost/assign/list_of.hpp>

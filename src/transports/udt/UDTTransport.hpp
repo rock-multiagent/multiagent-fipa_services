@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <boost/shared_ptr.hpp>
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <fipa_services/ErrorHandling.hpp>
 #include <fipa_services/transports/Transport.hpp>
 #include <fipa_services/transports/udt/IncomingConnection.hpp>

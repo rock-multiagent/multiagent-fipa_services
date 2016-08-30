@@ -1,6 +1,6 @@
 #include "Transport.hpp"
 
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <stdexcept>

@@ -2,7 +2,7 @@
 #include "ServiceDirectoryEntry.hpp"
 #include <boost/regex.hpp>
 #include "ErrorHandling.hpp"
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 
 namespace fipa {
 namespace services {

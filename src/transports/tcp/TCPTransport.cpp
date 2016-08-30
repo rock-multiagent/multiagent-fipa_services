@@ -4,7 +4,7 @@
 #include <fipa_acl/message_generator/envelope_generator.h>
 #include <fipa_acl/message_generator/message_generator.h>
 
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <iostream>
 #include <vector>
 #include <boost/asio.hpp>

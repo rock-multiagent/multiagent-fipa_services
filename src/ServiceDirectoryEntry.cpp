@@ -1,6 +1,6 @@
 #include "ServiceDirectoryEntry.hpp"
 #include <boost/assign/list_of.hpp>
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 
 namespace fipa {
 namespace services {

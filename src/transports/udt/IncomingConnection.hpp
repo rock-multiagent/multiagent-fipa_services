@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <boost/shared_ptr.hpp>
 #include <udt/udt.h>
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <fipa_services/transports/Connection.hpp>
 
 namespace fipa {

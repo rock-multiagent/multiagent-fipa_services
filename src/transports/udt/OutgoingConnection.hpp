@@ -3,7 +3,7 @@
 
 #include <udt/udt.h>
 #include <stdexcept>
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <fipa_services/transports/OutgoingConnection.hpp>
 
 namespace fipa {

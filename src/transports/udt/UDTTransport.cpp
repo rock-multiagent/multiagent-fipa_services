@@ -5,7 +5,7 @@
 #include <netdb.h>
 #include <stdexcept>
 #include <string.h>
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <boost/regex.hpp>
 
 using namespace UDT;
