@@ -298,7 +298,6 @@ fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter
         // Handle delivery
         // The name of the next destination -- this next destination can also be an intermediate receiver
         std::string receiverName = rit->getName();
-        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
 
         // Check for local receivers, or identify locator
         bool doThrow = false;
@@ -348,6 +347,10 @@ fipa::acl::AgentIDList MessageTransport::forward(const fipa::acl::Letter& letter
                     ServiceLocation location = *it;
 
                     try{
+                        // Handle delivery
+                        // The name of the next destination -- this next destination can also be an intermediate receiver
+                        receiverName = serviceEntry.getName();
+                        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
                         // serviceEntry.getName() is our receiver -- after
                         // resolution of regex
                         forward(serviceEntry.getName(), location, updatedLetter);
