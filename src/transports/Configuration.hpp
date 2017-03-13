@@ -7,6 +7,7 @@
 namespace fipa {
 namespace services {
 namespace transports {
+
 /**
  * Struct to configure different transports, i.e. to set a fix listening port.
  */
@@ -15,15 +16,17 @@ struct Configuration
     std::string transport_type;
     uint16_t listening_port;
     uint32_t maximum_clients;
-    
+    int ttl;
+
     /**
      * Default values.
      */
-    Configuration()
-        : transport_type("UNKNOWN")
-        , listening_port(0)
-        , maximum_clients(50)
-    {}
+    Configuration();
+
+    Configuration(const std::string& transport_type,
+            uint16_t listening_port,
+            uint32_t maximum_clients,
+            int ttl);
 };
 
 } // end namespace transports

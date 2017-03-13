@@ -81,6 +81,11 @@ Transport::Transport(Type type)
 {
 }
 
+Transport::Transport(const Configuration& config)
+    : mType( getTypeFromTxt(config.transport_type) )
+    , mConfiguration(config)
+{}
+
 Transport::Type Transport::getTypeFromTxt(const std::string& type)
 {
     std::string tmp = type;

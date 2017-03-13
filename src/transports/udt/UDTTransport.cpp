@@ -21,7 +21,7 @@ uint32_t UDTTransport::msRefCount = 0;
 
 
 UDTTransport::UDTTransport()
-    : Transport(UDT)
+    : Transport( Configuration(Transport::TypeTxt[UDT], 0, 50, -1) )
     , mBufferSize(10000000)
 {
     ++msRefCount;
@@ -118,9 +118,9 @@ bool UDTTransport::accept()
     return success;
 }
 
-void UDTTransport::start(uint16_t port, uint32_t maxClients)
+void UDTTransport::start()
 {
-    listen(port, maxClients);
+    listen(mConfiguration.listening_port, mConfiguration.maximum_clients);
 }
 
 void UDTTransport::update(bool readAllMessages)
@@ -181,7 +181,9 @@ Address UDTTransport::getAddress(const std::string& interfaceName) const
  */
 OutgoingConnection::Ptr UDTTransport::establishOutgoingConnection(const Address& address)
 {
-    return transports::OutgoingConnection::Ptr(new udt::OutgoingConnection(address));
+    transports::OutgoingConnection::Ptr outgoingConnection(new udt::OutgoingConnection(address));
+    outgoingConnection->setTTL(mConfiguration.ttl);
+    return outgoingConnection;
 }
 
 } // end namespace udt

@@ -8,6 +8,8 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <fipa_services/transports/udt/OutgoingConnection.hpp>
 
+#include "Configuration.hpp"
+
 namespace fipa {
 namespace services {
 namespace transports {
@@ -35,6 +37,8 @@ private:
 
 protected:
     Transport(Type type);
+
+    Transport(const Configuration& configuration);
 
 public:
     virtual ~Transport() {}
@@ -106,7 +110,7 @@ public:
     /**
      * Start transport functionality, e.g. listen socket etc.
      */
-    virtual void start(uint16_t port = 0, uint32_t maxClients = 50) { throw std::runtime_error("fipa::services::Transport::start not implemented by transport: " + getName()); }
+    virtual void start() { throw std::runtime_error("fipa::services::Transport::start not implemented by transport: " + getName()); }
 
     /**
      * Update transport, e.g. accept new connections and read existing
@@ -131,6 +135,19 @@ public:
      * Trigger callbacks upon a newly arrived message
      */
     void notify(const std::string& message);
+
+    /**
+     * Set the transport configuration
+     */
+    void setConfiguration(const Configuration& configuration) { mConfiguration = configuration; }
+
+    /**
+     * Return the transport configuration
+     */
+    const Configuration& getConfiguration() const { return mConfiguration; }
+
+protected:
+    Configuration mConfiguration;
 
 private:
     /// Outgoing connections for the given transport

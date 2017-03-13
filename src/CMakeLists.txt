@@ -24,6 +24,7 @@ rock_library(fipa_services
         ServiceDirectoryEntry.cpp
         ServiceLocator.cpp
         transports/Address.cpp
+        transports/Configuration.cpp
         transports/Connection.cpp
         transports/OutgoingConnection.cpp
         transports/Transport.cpp

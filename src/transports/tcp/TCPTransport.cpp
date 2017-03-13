@@ -15,7 +15,7 @@
 #include <boost/asio/read.hpp>
 #include <string>
 
-#include <fipa_services/transports/tcp/OutgoingConnection.hpp>
+#include "OutgoingConnection.hpp"
 
 namespace fipa {
 namespace services {
@@ -31,7 +31,7 @@ boost::asio::io_service& TCPTransport::getIOService()
 }
 
 TCPTransport::TCPTransport()
-    : Transport(Transport::TCP)
+    : Transport( Configuration(Transport::TypeTxt[TCP], 0, 50, -1) )
     , mAcceptor(msIOService)
 {
 }
@@ -39,9 +39,9 @@ TCPTransport::TCPTransport()
 TCPTransport::~TCPTransport()
 {}
 
-void TCPTransport::start(uint16_t port, uint32_t maxClients)
+void TCPTransport::start()
 {
-    listen(port);
+    listen(mConfiguration.listening_port);
 }
 
 void TCPTransport::update(bool readAllMessages)

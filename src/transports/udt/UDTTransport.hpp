@@ -5,8 +5,9 @@
 #include <boost/shared_ptr.hpp>
 #include <base-logging/Logging.hpp>
 #include <fipa_services/ErrorHandling.hpp>
-#include <fipa_services/transports/Transport.hpp>
-#include <fipa_services/transports/udt/IncomingConnection.hpp>
+
+#include "../Transport.hpp"
+#include "IncomingConnection.hpp"
 
 namespace fipa {
 namespace services {
@@ -93,7 +94,7 @@ public:
     UDTTransport();
     ~UDTTransport();
 
-    void start(uint16_t port = 0, uint32_t maxClients = 50);
+    void start();
 
     /**
      * Update and read all sockets

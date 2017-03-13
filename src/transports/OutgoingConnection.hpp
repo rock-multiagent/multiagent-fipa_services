@@ -35,6 +35,19 @@ public:
      * \param data
      */
     virtual void send(const std::string& data) = 0;
+
+    /**
+     * Set the Time-to-Live for message in millisec
+     */
+    void setTTL(int ttl) { mTTL = ttl; }
+
+    /**
+     * Get the Time-to-Live
+     */
+    int getTTL() const { return mTTL; }
+
+protected:
+    int mTTL;
 };
 
 } // end namespace transports

@@ -58,10 +58,9 @@ void MessageTransport::activateTransport(transports::Transport::Type type)
 
     if(configIt != mTransportConfigurations.end())
     {
-        transport->start( configIt->listening_port, configIt->maximum_clients );
-    } else {
-        transport->start();
+        transport->setConfiguration( *configIt );
     }
+    transport->start();
 
     transport->registerObserver(boost::bind(&MessageTransport::handleData, this, _1));
     cacheTransportEndpoints(transport);

@@ -82,7 +82,7 @@ void OutgoingConnection::sendData(const std::string& data, int ttl, bool inorder
 
 void OutgoingConnection::send(const std::string& data)
 {
-    sendData(data, -1, true);
+    sendData(data, getTTL(), true);
 }
 
 } // end namespace udt
