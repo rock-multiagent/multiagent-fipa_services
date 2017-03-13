@@ -34,8 +34,8 @@ BOOST_AUTO_TEST_CASE(tcp_transport_test)
 
     transport->start();
 
-    transports::Address address = transport->getAddress("usb0");
-    BOOST_TEST_MESSAGE("TCP Transport started on address: " << address.toString()); 
+    transports::Address address = transport->getAddress("eth0");
+    BOOST_TEST_MESSAGE("TCP Transport started on address: " << address.toString());
 
     OutgoingConnection::Ptr outConnection = transport->establishOutgoingConnection(address);
 
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(tcp_transport_test)
     } catch(const std::runtime_error& e)
     {
         BOOST_TEST_MESSAGE(e.what());
-    } 
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

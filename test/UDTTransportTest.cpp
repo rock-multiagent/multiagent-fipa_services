@@ -45,8 +45,8 @@ BOOST_AUTO_TEST_CASE(udt_transport_test)
 
     udtTransport->start();
 
-    transports::Address address = udtTransport->getAddress("usb0");
-    BOOST_TEST_MESSAGE("UDT Transport started on address: " << address.toString()); 
+    transports::Address address = udtTransport->getAddress("eth0");
+    BOOST_TEST_MESSAGE("UDT Transport started on address: " << address.toString());
 
     OutgoingConnection::Ptr outConnection = udtTransport->establishOutgoingConnection(address);
 
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(udt_transport_test)
     } catch(const std::runtime_error& e)
     {
         BOOST_TEST_MESSAGE(e.what());
-    } 
+    }
 
 }
 
