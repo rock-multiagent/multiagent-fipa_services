@@ -78,3 +78,11 @@ int main()
     return 0;
 }
 ```
+## License
+FIPA Services is distributed under the [LGPL license v2 or
+later](https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt)
+
+## Maintainer / Authors / Contributors
+ * see manifest.xml
+
+Copyright 2013-2017 DFKI GmbH / Robotics Innovation Center

@@ -4,8 +4,8 @@
   </description>
   <maintainer>Thomas Roehr/thomas.roehr@dfki.de</maintainer>
   <author>Thomas Roehr/thomas.roehr@dfki.de</author>
-  <license></license>
-  <url>https://gitorious.org/rock-multiagent</url>
+  <license>LGPL v2 or later</license>
+  <url>https://github.com/rock-multiagent/fipa_services</url>
   <depend package="multiagent/fipa_acl" />
   <depend package="tools/service_discovery" />
   <depend package="udt" />
