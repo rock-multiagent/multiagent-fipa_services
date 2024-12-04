@@ -3,7 +3,6 @@
 
 #include <map>
 #include <fipa_acl/fipa_acl.h>
-#include <boost/function.hpp>
 #include <stdexcept>
 #include <fipa_services/transports/Transport.hpp>
 #include <fipa_services/transports/Configuration.hpp>
@@ -20,7 +19,7 @@ namespace services {
 namespace message_transport {
 
 /// MessageTransportHandler needs to return success of the delivery
-typedef boost::function2<bool, const std::string&, const fipa::acl::Letter&> MessageTransportHandler;
+typedef std::function<bool (const std::string&, const fipa::acl::Letter&)> MessageTransportHandler;
 
 typedef std::map<std::string, MessageTransportHandler> MessageTransportHandlerMap;
 typedef std::vector<std::string> MessageTransportPriorityList;
@@ -48,12 +47,12 @@ typedef std::vector<std::string> MessageTransportPriorityList;
  };
 
  #include <fipa_services/FipaServices.hpp>
- #include <boost/bind.hpp>
+ #include <functional>
 
  using fipa::acl::message_transport;
 
  MessageTransport mts("my-mts");
- mts.registerMessageTransport("custom-transport", boost::bind(&CustomTransport::deliverForwardLetter, this, _1,_2));
+ mts.registerMessageTransport("custom-transport", std::bind(&CustomTransport::deliverForwardLetter, this, _1,_2));
 
  ...
  // Some letter from somewhere, here just manually constructed

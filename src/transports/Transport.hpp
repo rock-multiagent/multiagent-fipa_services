@@ -15,7 +15,7 @@ namespace services {
 namespace transports {
 
 /// Allow to register callbacks with a transport once data arrives
-typedef boost::function1<void, const std::string&> TransportObserver;
+typedef std::function<void (const std::string&)> TransportObserver;
 
 /**
  * \class Transport
@@ -43,7 +43,7 @@ protected:
 public:
     virtual ~Transport() {}
 
-    typedef boost::shared_ptr<Transport> Ptr;
+    typedef std::shared_ptr<Transport> Ptr;
 
     /**
      * Create a transport of the given type

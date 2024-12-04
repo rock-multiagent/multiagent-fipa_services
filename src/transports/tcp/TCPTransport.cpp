@@ -9,7 +9,6 @@
 #include <vector>
 #include <boost/asio.hpp>
 #include <stdexcept>
-#include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/asio/read.hpp>

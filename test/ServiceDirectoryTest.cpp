@@ -1,4 +1,4 @@
-#include <boost/test/auto_unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <fipa_services/ServiceDirectory.hpp>
 BOOST_AUTO_TEST_SUITE(service_directory)

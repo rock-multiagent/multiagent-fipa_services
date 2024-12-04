@@ -1,7 +1,7 @@
 #ifndef FIPA_SERVICES_TRANSPORTS_OUTGOING_CONNECTION_HPP
 #define FIPA_SERVICES_TRANSPORTS_OUTGOING_CONNECTION_HPP
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <fipa_services/transports/Connection.hpp>
 
 namespace fipa {
@@ -15,7 +15,7 @@ namespace transports {
 class OutgoingConnection : public Connection
 {
 public:
-    typedef boost::shared_ptr<OutgoingConnection> Ptr;
+    typedef std::shared_ptr<OutgoingConnection> Ptr;
 
     OutgoingConnection();
     OutgoingConnection(const std::string& ipaddress, uint16_t port);

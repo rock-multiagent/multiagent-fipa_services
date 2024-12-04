@@ -5,7 +5,6 @@
 #include <base-logging/Logging.hpp>
 #include <base/Time.hpp>
 
-#include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <fipa_acl/message_generator/envelope_generator.h>
@@ -14,6 +13,8 @@
 namespace fipa {
 namespace services {
 namespace message_transport {
+
+using namespace std::placeholders;
 
 MessageTransport::MessageTransport(const fipa::acl::AgentID& id, ServiceDirectory::Ptr serviceDirectory)
     : mAgentId(id)
@@ -62,7 +63,7 @@ void MessageTransport::activateTransport(transports::Transport::Type type)
     }
     transport->start();
 
-    transport->registerObserver(boost::bind(&MessageTransport::handleData, this, _1));
+    transport->registerObserver(std::bind(&MessageTransport::handleData, this, _1));
     cacheTransportEndpoints(transport);
 
     mActiveTransports[type] = transport;

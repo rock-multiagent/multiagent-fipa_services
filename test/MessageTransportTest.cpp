@@ -1,7 +1,8 @@
-#include <boost/test/auto_unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <fipa_services/MessageTransport.hpp>
-#include <boost/bind.hpp>
+
+using namespace std::placeholders;
 
 class TestDelivery
 {
@@ -33,9 +34,8 @@ BOOST_AUTO_TEST_CASE(internal_communication)
     MessageTransport messageTransport1(AgentID("mts-1"), serviceDirectory);
 
     TestDelivery delivery;
-
-    messageTransport0.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
-    messageTransport1.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterFail,delivery,_1,_2));
+    messageTransport0.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
+    messageTransport1.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterFail,delivery,_1,_2));
 
 
     ACLMessage msg;
@@ -77,8 +77,8 @@ BOOST_AUTO_TEST_CASE(inter_service_communication)
     }
 
     TestDelivery delivery;
-    messageTransport0.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
-    messageTransport1.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
+    messageTransport0.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
+    messageTransport1.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
 
     ACLMessage msg;
     msg.setSender(mt0Client);
@@ -127,8 +127,8 @@ BOOST_AUTO_TEST_CASE(inter_service_communication_fail)
     }
 
     TestDelivery delivery;
-    messageTransport0.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
-    messageTransport1.registerMessageTransport("default-corba-transport", boost::bind(&TestDelivery::deliverOrForwardLetterFail,delivery,_1,_2));
+    messageTransport0.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterSuccess,delivery,_1,_2));
+    messageTransport1.registerMessageTransport("default-corba-transport", std::bind(&TestDelivery::deliverOrForwardLetterFail,delivery,_1,_2));
 
     ACLMessage msg;
     msg.setSender(mt0Client);

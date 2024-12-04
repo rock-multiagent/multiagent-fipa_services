@@ -1,17 +1,17 @@
 #include "ServiceDirectoryEntry.hpp"
-#include <boost/assign/list_of.hpp>
 #include <base-logging/Logging.hpp>
+#include <cassert>
 
 namespace fipa {
 namespace services {
 
-std::map<ServiceDirectoryEntry::Field, std::string> ServiceDirectoryEntry::FieldTxt = boost::assign::map_list_of
-    (ServiceDirectoryEntry::NAME, "NAME")
-    (ServiceDirectoryEntry::TYPE, "TYPE")
-    (ServiceDirectoryEntry::LOCATOR, "LOCATOR")
-    (ServiceDirectoryEntry::DESCRIPTION, "DESCRIPTION")
-    (ServiceDirectoryEntry::TIMESTAMP, "TIMESTAMP")
-    ;
+std::map<ServiceDirectoryEntry::Field, std::string> ServiceDirectoryEntry::FieldTxt = {
+    {ServiceDirectoryEntry::NAME, "NAME"},
+    {ServiceDirectoryEntry::TYPE, "TYPE"},
+    {ServiceDirectoryEntry::LOCATOR, "LOCATOR"},
+    {ServiceDirectoryEntry::DESCRIPTION, "DESCRIPTION"},
+    {ServiceDirectoryEntry::TIMESTAMP, "TIMESTAMP"}
+};
 
 ServiceDirectoryEntry::ServiceDirectoryEntry()
 {}

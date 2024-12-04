@@ -39,7 +39,7 @@ The distributed service directory relies on the service_discovery library which 
 ### MessageTransport
 
 ```
-#include <boost/bind.hpp>
+#include <functional>
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 
@@ -58,6 +58,7 @@ public:
 int main()
 {
     using namespace fipa::services;
+    using namespace std::placeholders;
 
     fipa::acl::AgentID serviceName("mts-name");
     ServiceDirectory::Ptr serviceDirectory(new DistributedServiceDirectory("_fipa_service_directory._udp"));
@@ -72,7 +73,7 @@ int main()
     // Register local message delivery
     Postman postman;
     messageTransport->registerMessageTransport("local-delivery",
-                                            boost::bind(&Postman::deliverLetterLocally, &postman,_1,_2));
+                                            std::bind(&Postman::deliverLetterLocally, &postman,_1,_2));
 
     ...
     return 0;

@@ -7,8 +7,6 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-#include <boost/assign.hpp>
-#include <boost/foreach.hpp>
 #ifndef TRANSPORT_UDT_UNSUPPORTED
 #include <fipa_services/transports/udt/UDTTransport.hpp>
 #endif
@@ -18,11 +16,11 @@ namespace fipa {
 namespace services {
 namespace transports {
 
-std::map<Transport::Type, std::string> Transport::TypeTxt = boost::assign::map_list_of
-    (Transport::UNKNOWN, "UNKNOWN")
-    (Transport::UDT, "UDT")
-    (Transport::TCP, "TCP")
-    (Transport::ALL, "ALL");
+std::map<Transport::Type, std::string> Transport::TypeTxt = {
+    {Transport::UNKNOWN, "UNKNOWN"},
+    {Transport::UDT, "UDT"},
+    {Transport::TCP, "TCP"},
+    {Transport::ALL, "ALL"}};
 
 std::string Transport::getLocalIPv4Address(const std::string& interfaceName)
 {

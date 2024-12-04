@@ -26,7 +26,7 @@ protected:
     boost::mutex mMutex;
 
 public:
-    typedef boost::shared_ptr<ServiceDirectory> Ptr;
+    typedef std::shared_ptr<ServiceDirectory> Ptr;
 
     ServiceDirectory();
     virtual ~ServiceDirectory() {}

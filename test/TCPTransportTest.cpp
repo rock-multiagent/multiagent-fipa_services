@@ -1,7 +1,6 @@
-#include <boost/test/auto_unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <fipa_services/transports/Transport.hpp>
-#include <boost/bind.hpp>
 #include <fipa_acl/fipa_acl.h>
 #include <fipa_acl/message_parser/envelope_parser.h>
 #include <fipa_acl/message_generator/envelope_generator.h>
