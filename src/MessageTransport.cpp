@@ -5,7 +5,6 @@
 #include <base-logging/Logging.hpp>
 #include <base/Time.hpp>
 
-#include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <fipa_acl/message_generator/envelope_generator.h>
