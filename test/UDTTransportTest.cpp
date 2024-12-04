@@ -1,4 +1,4 @@
-#include <boost/test/auto_unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <fipa_services/transports/Transport.hpp>
 #include <fipa_acl/fipa_acl.h>
