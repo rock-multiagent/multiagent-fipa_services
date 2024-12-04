@@ -62,7 +62,7 @@ void MessageTransport::activateTransport(transports::Transport::Type type)
     }
     transport->start();
 
-    transport->registerObserver(boost::bind(&MessageTransport::handleData, this, _1));
+    transport->registerObserver(boost::bind(&MessageTransport::handleData, this, boost::placeholders::_1));
     cacheTransportEndpoints(transport);
 
     mActiveTransports[type] = transport;
