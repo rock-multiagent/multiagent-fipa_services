@@ -2,7 +2,6 @@
 #define FIPA_SERVICES_TRANSPORTS_UDT_UDT_TRANSPORT_HPP
 
 #include <vector>
-#include <boost/shared_ptr.hpp>
 #include <base-logging/Logging.hpp>
 #include <fipa_services/ErrorHandling.hpp>
 

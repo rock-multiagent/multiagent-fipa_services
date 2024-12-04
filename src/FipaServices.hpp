@@ -45,7 +45,7 @@
  * \subsection MessageTransport
  * \verbatim
 
- #include <boost/bind.hpp>
+ #include <functional>
  #include <fipa_services/MessageTransport.hpp>
  #include <fipa_services/DistributedServiceDirectory.hpp>
 
@@ -78,7 +78,7 @@
      // Register local message delivery
      Postman postman;
      messageTransport->registerMessageTransport("local-delivery",
-                                             boost::bind(&Postman::deliverLetterLocally, &postman,_1,_2));
+                                             std::bind(&Postman::deliverLetterLocally, &postman,_1,_2));
 
      ...
      return 0;

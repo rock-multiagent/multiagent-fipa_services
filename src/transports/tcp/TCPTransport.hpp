@@ -21,7 +21,7 @@ class TCPTransport : public Transport
 {
     friend class OutgoingConnection;
 
-    typedef boost::shared_ptr<boost::asio::ip::tcp::socket> SocketPtr;
+    typedef std::shared_ptr<boost::asio::ip::tcp::socket> SocketPtr;
 
     static boost::asio::io_service msIOService;
     boost::asio::ip::tcp::acceptor mAcceptor;

@@ -2,7 +2,7 @@
 #define FIPA_SERVICES_TRANSPORTS_UDT_INCOMING_CONNECTION_HPP
 
 #include <stdexcept>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <udt/udt.h>
 #include <base-logging/Logging.hpp>
 #include <fipa_services/transports/Connection.hpp>
@@ -21,7 +21,7 @@ class IncomingConnection : public fipa::services::transports::Connection
     UDTSOCKET mSocket;
 
 public:
-    typedef boost::shared_ptr<IncomingConnection> Ptr;
+    typedef std::shared_ptr<IncomingConnection> Ptr;
 
     IncomingConnection();
     ~IncomingConnection();
